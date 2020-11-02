@@ -1,0 +1,6 @@
+[project]
+org='rte'
+name='ci'
+
+[build]
+command='check_yaml'
