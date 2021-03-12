@@ -13,7 +13,20 @@ services:
         volumes:
             - images:/tftpboot/images
             - pxe_extra_config:/etc/dnsmasq.d/
-
+    jenkins:
+        build:
+            context: ./jenkins
+            args:
+                dockergid: 134  # Host docker gid
+        restart: unless-stopped
+        volumes:
+            - /var/jenkins_home:/var/jenkins_home
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /tmp:/tmp
+        ports:
+            - "8080:8080/tcp"
+            - "50000:50000/tcp"
+        network_mode: bridge
 volumes:
     images:
     pxe_extra_config:
