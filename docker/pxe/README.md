@@ -1,3 +1,8 @@
+<!--
+Copyright (C) 2021, RTE (http://www.rte-france.com
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # How to test the PXE docker image
 
 The PXE docker image is intended to be launched by docker-compose. It is

@@ -1,3 +1,6 @@
+# Copyright (C) 2021, RTE (http://www.rte-france.com)
+# SPDX-License-Identifier: Apache-2.0
+
 FROM alpine:3.13
 
 ENV DHCP_RANGE_BEGIN 192.168.111.50
