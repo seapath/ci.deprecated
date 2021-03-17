@@ -1,0 +1,116 @@
+/*****************************************************************************
+ * Copyright (C) 2021, RTE (http://www.rte-france.com)
+ * SPDX-License-Identifier: CC-BY-4.0
+ *
+ * Jenkins pipeline triggered periodically in order to:
+ * - Fetch sources of defined PROJECTS from sfl/master branch on Gerrit server
+ * - Mirror them into sfl/master branch on GitLab server
+ * - TODO: Build and pass corresponding tests
+ * - If previous steps succeed, merge sfl/master branch into rte/master
+ *
+ * Requirements:
+ * - SSH Agent Plugin
+ * - Set SSH credentials ('gerrit-credentials' and 'gitlab-credentials')
+ *****************************************************************************/
+
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'GERRIT_URL',
+            defaultValue: 'g1.sfl.team',
+            description: 'Gerrit server URL')
+        string(name: 'GERRIT_USER',
+            defaultValue: 'rte-ci',
+            description: 'User used to authentificate to the Gerrit server.')
+        string(name: 'GITLAB_URL',
+            defaultValue: 'gitlab.savoirfairelinux.com',
+            description: 'GitLab server URL')
+        string(name: 'GITLAB_USER',
+            defaultValue: 'rte-ci',
+            description: 'User used to authentificate to the GitLab server.')
+        string(name: 'PROJECTS',
+            defaultValue: 'meta-seapath,yocto-bsp,repo-manifest',
+            description: 'List of projects separated by commas without spaces')
+    }
+
+    triggers {
+        cron('H/15 * * * *')
+    }
+
+    // TODO: Add gerrit and gitlab server fingerprints to known_hosts instead
+    environment {
+        GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
+    }
+
+    stages {
+        stage('Sync repos') {
+            steps {
+                deleteDir()
+                sh "mkdir tmpdir && cd tmpdir"
+                script {
+                    def project_list = PROJECTS.split(',')
+                    for (project in project_list) {
+                        stage("Sync ${project}") {
+                            sshagent(credentials : ['gerrit-credentials']) {
+                                sh """
+                                    git clone -b sfl/master \
+                                    --single-branch --mirror \
+                                    ssh://${GERRIT_USER}@${GERRIT_URL}:29419/rte/votp/${project}
+                                """
+                            }
+                            sshagent(credentials : ['gitlab-credentials']) {
+                                sh """
+                                    cd ${project}.git
+                                    git remote add --mirror=fetch secondary \
+                                    git@${GITLAB_URL}:${GITLAB_USER}/test-rte-${project}.git
+                                    git push secondary sfl/master
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo 'Building'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Test'
+            }
+        }
+    }
+
+    // If tests succeed fast-forward merge to rte/master
+    post {
+        success {
+            deleteDir()
+            sshagent(credentials : ['gitlab-credentials']) {
+                sh "mkdir tmpdir && cd tmpdir"
+                script {
+                    def project_list = PROJECTS.split(',')
+                    for (project in project_list) {
+                        stage("Merge ${project}") {
+                            sh """
+                                git clone -b rte/master \
+                                git@${GITLAB_URL}:${GITLAB_USER}/test-rte-${project}.git
+                                cd test-rte-${project}
+                                git merge --ff-only origin/sfl/master
+                                git push origin rte/master
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+        failure {
+            echo "Did not succeed!"
+        }
+    }
+}
