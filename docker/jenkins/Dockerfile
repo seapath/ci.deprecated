@@ -3,7 +3,8 @@
 
 FROM jenkins/jenkins
 
-ARG dockergid=134  # Needs to be set to docker group
+# Needs to be set to docker group
+ARG dockergid=134
 
 USER root
 
