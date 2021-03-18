@@ -63,7 +63,7 @@ pipeline {
                                 sh """
                                     cd ${project}.git
                                     git remote add --mirror=fetch secondary \
-                                    git@${GITLAB_URL}:${GITLAB_USER}/test-rte-${project}.git
+                                    git@${GITLAB_URL}:${GITLAB_USER}/${project}.git
                                     git push secondary sfl/master
                                 """
                             }
@@ -98,8 +98,8 @@ pipeline {
                         stage("Merge ${project}") {
                             sh """
                                 git clone -b rte/master \
-                                git@${GITLAB_URL}:${GITLAB_USER}/test-rte-${project}.git
-                                cd test-rte-${project}
+                                git@${GITLAB_URL}:${GITLAB_USER}/${project}.git
+                                cd ${project}
                                 git merge --ff-only origin/sfl/master
                                 git push origin rte/master
                             """
