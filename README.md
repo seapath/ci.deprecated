@@ -17,8 +17,8 @@ on the host machine.
 
 ### Create docker-compose environment file
 
-We use a docker-compose environment file in our docker-compose.yaml to configure
-all the environment specific settings.
+We use a docker-compose environment file in our _docker-compose.yaml_ to configure
+all the environment-specific settings.
 
 To generate this file, you can use the script `docker/generate_env.sh`.
 Before running the script, you must retrieve the network interface name where
@@ -39,9 +39,11 @@ This address range must be in the same network as your network interface.
 
 To build the docker images perform the following commands:
 
+All docker-compose command must be run in the _docker_ directory at the same
+directory level of the _docker-compose.yaml_ file.
+
 ```
-cd docker
-docker-compose -f docker-compose.yaml build
+docker-compose build
 ```
 
 ### Create docker-compose stack
@@ -49,11 +51,19 @@ docker-compose -f docker-compose.yaml build
 To deploy and start the CI perform the following command:
 
 ```
-docker-compose -f docker-compose.yaml up
+docker-compose up -d
 ```
 
-You can later stop the CI with `docker-compose -f docker-compose.yaml
-stop` and start it with `docker-compose -f docker-compose.yaml start`.
+If you remove the _-d_ parameter it will the command in foreground and you will
+have access to containers logs. You can stop it by pressing _CTRL+C_ keys.
+
+You can later stop the CI with `docker-compose stop` and start it with
+`docker-compose start`.
+
+To undeploy the CI use `docker-compose down`.
+
+For more informations about the `docker-compose` command see the official
+documentation at https://docs.docker.com/compose/.
 
 ### Jenkins configuration
 
