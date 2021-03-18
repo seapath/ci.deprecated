@@ -13,15 +13,27 @@ images by using docker-compose.
 Please make sure `docker` and `docker-compose` packages are installed
 on the host machine.
 
-On the host machine create folder `/var/jenkins_home` and give user
-ownership:
-
-```
-sudo mkdir /var/jenkins_home
-sudo chown -R 1000:1000 /var/jenkins_home
-```
-
 ## Deploying the CI
+
+### Create docker-compose environment file
+
+We use a docker-compose environment file in our docker-compose.yaml to configure
+all the environment specific settings.
+
+To generate this file, you can use the script `docker/generate_env.sh`.
+Before running the script, you must retrieve the network interface name where
+you want the PXE server listen to (you can archieve this with `ip addr`).
+
+Once you have it run the script :
+```
+./generate_env.sh \
+    --interface your_interface \
+    --dhcp-range-begin first_dhcp_ip \
+    --dhcp-range-end last_dhcp_ip
+```
+Replace your_interface by the network interface and first_dhcp_ip and
+last_dhcp_ip by the IP address range you want to define for the DHCP.
+This address range must be in the same network as your network interface.
 
 ### Build the images
 
