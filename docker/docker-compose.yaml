@@ -26,6 +26,8 @@ services:
             - /var/jenkins_home:/var/jenkins_home
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
+            - images:/opt/images
+            - .:/opt/docker
         ports:
             - "8080:8080/tcp"
             - "50000:50000/tcp"
