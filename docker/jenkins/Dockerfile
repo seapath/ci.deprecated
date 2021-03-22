@@ -6,6 +6,9 @@ FROM jenkins/jenkins
 # Needs to be set to docker group
 ARG dockergid=134
 
+# Avoid '@' symbol on workspace paths
+ENV JAVA_OPTS="-Dhudson.slaves.WorkspaceList=X -Djava.awt.headless=true"
+
 USER root
 
 RUN groupadd --gid ${dockergid} docker
