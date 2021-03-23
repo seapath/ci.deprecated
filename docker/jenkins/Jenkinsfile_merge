@@ -1,0 +1,66 @@
+/*****************************************************************************
+ * Copyright (C) 2021, RTE (http://www.rte-france.com)
+ * SPDX-License-Identifier: CC-BY-4.0
+ *
+ * Jenkins pipeline triggered from job 'ci' in order to merge GitLab's
+ * sfl/master into rte/master.
+ *
+ * Requirements:
+ * - SSH Agent Plugin
+ * - Set SSH key with name 'gitlab-credentials'
+ *****************************************************************************/
+
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'GITLAB_URL',
+            defaultValue: '10.132.156.199:2200',
+            description: 'GitLab server URL')
+        string(name: 'GITLAB_USER',
+            defaultValue: 'root',
+            description: 'User used to authentificate to the GitLab server.')
+        string(name: 'PROJECTS',
+            defaultValue: 'meta-seapath,yocto-bsp,repo-manifest,ansible',
+            description: 'List of projects separated by commas without spaces')
+    }
+
+    // TODO: Add gerrit and gitlab server fingerprints to known_hosts instead
+    environment {
+        GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                deleteDir()
+                sshagent(credentials : ['gitlab-credentials']) {
+                    script {
+                        def project_list = PROJECTS.split(',')
+                        for (project in project_list) {
+                            stage("Merge ${project}") {
+                                sh """
+                                    git clone -b rte/master \
+                                    "[git@${GITLAB_URL}]:${GITLAB_USER}/${project}.git"
+                                    cd ${project}
+                                    git merge --ff-only origin/sfl/master
+                                    git push origin rte/master
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Succeed'
+        }
+
+        failure {
+            echo "Did not succeed!"
+        }
+    }
+}

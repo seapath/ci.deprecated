@@ -1,0 +1,85 @@
+/*****************************************************************************
+ * Copyright (C) 2021, RTE (http://www.rte-france.com)
+ * SPDX-License-Identifier: CC-BY-4.0
+ *
+ * Jenkins pipeline to be triggered after the synchronization of Gerrit
+ * and GitLab (sfl/master branches):
+ * - Fetch and build projects according to rte-sfl.xml manifest
+ * - TODO: Pass corresponding tests
+ * - If previous steps succeed, start job for merge sfl/master into rte/master
+ *
+ * Requirements:
+ * - SSH Agent Plugin
+ * - Set SSH key with name 'gitlab-credentials'
+ *****************************************************************************/
+
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'GITLAB_URL',
+            defaultValue: '10.132.156.199:2200',
+            description: 'GitLab server URL')
+        string(name: 'GITLAB_USER',
+            defaultValue: 'root',
+            description: 'User used to authentificate to the GitLab server.')
+    }
+
+    // TODO: Add gitlab server fingerprints to known_hosts instead
+    environment {
+        GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
+    }
+
+    stages {
+        stage('CI') {
+            steps {
+                script {
+                    stage("Fetch") {
+                        sshagent(credentials : ['gitlab-credentials']) {
+                            sh """
+                                repo init -u "ssh://git@${GITLAB_URL}/${GITLAB_USER}/repo-manifest.git" \
+                                -m "rte-sfl.xml" -b "sfl/master"
+                                repo sync
+                            """
+                        }
+                    }
+                    stage("Build") {
+                        sshagent(credentials : ['gitlab-credentials']) {
+                            sh """
+                                ssh-add -L > keys/ansible_public_ssh_key.pub
+                                cqfd init
+                                cqfd -b flash_pxe
+                                cqfd
+                                # Copy to volume shared with PXE docker
+                                cp build/tmp/deploy/images/votp/{seapath-flash-pxe-votp.cpio.gz,bzImage,seapath-image-votp.wic.bmap,seapath-image-votp.wic.gz} /opt/images/
+                            """
+                        }
+                    }
+                    stage("Ansible prepare") {
+                        sshagent(credentials : ['gitlab-credentials']) {
+                            sh """
+                                git clone -b sfl/master \
+                                "[git@${GITLAB_URL}]:${GITLAB_USER}/ansible.git"
+                                cd ansible
+                                cqfd init
+                                cqfd -b prepare
+                                cqfd run ansible localhost -m ping
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Synchronization finished, start 'merge' job."
+            build job: "merge"
+        }
+
+        failure {
+            echo "Did not succeed!"
+        }
+    }
+}
