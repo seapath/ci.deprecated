@@ -35,10 +35,15 @@ pipeline {
 
     stages {
 
+        stage("Clean workspace") {
+            steps {
+                cleanWs()
+            }
+        }
+
         stage("Sync meta-seapath") {
             steps {
                 dir("meta-seapath"){
-                    deleteDir()
                     git branch: 'sfl/master',
                     credentialsId: 'gerrit-credentials',
                     url: "ssh://${GERRIT_USER}@${GERRIT_URL}/rte/votp/meta-seapath"

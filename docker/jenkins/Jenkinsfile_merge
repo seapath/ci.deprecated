@@ -31,9 +31,15 @@ pipeline {
     }
 
     stages {
+
+        stage("Clean workspace") {
+            steps {
+                cleanWs()
+            }
+        }
+
         stage('Build') {
             steps {
-                deleteDir()
                 sshagent(credentials : ['gitlab-credentials']) {
                     script {
                         def project_list = PROJECTS.split(',')
