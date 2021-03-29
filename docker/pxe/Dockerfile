@@ -14,8 +14,8 @@ RUN chown -R nobody:nogroup /tftpboot
 RUN mkdir /tftpboot/pxelinux.cfg
 COPY syslinux.cfg /tftpboot/pxelinux.cfg/default
 COPY dnsmasq.conf /etc/dnsmasq.conf
+COPY pxe_extra_config/* /etc/dnsmasq.d/
 VOLUME /tftpboot/images
-VOLUME /etc/dnsmasq.d/
 COPY entry.sh /usr/bin/entry.sh
 RUN chmod +x /usr/bin/entry.sh
 CMD /usr/bin/entry.sh
