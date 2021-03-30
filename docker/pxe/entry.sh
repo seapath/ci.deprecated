@@ -6,4 +6,6 @@ cat > /etc/dnsmasq.more.conf << EOF
 dhcp-range=${DHCP_RANGE_BEGIN},${DHCP_RANGE_END},48h
 interface=${DHCP_BIND_INTERFACE}
 EOF
+# Give access to Jenkins to images directory
+chmod 777 /tftpboot/images
 /usr/sbin/dnsmasq --keep-in-foreground --log-facility=-
