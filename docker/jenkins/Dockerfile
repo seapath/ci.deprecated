@@ -14,7 +14,21 @@ USER root
 RUN groupadd --gid ${dockergid} docker
 
 RUN apt-get update && \
-    apt-get install -y docker.io python3 git make pkg-config bash-completion
+    apt-get install -y \
+        docker.io \
+        python3 \
+        python3-libvirt \
+        python3-setuptools \
+        git \
+        make \
+        pkg-config \
+        bash-completion
+
+ADD https://bootstrap.pypa.io/get-pip.py get-pip.py
+RUN python3 ./get-pip.py
+RUN pip install ansible==2.9
+RUN pip install netaddr
+RUN pip install docker
 
 RUN usermod -aG docker jenkins
 
