@@ -29,6 +29,11 @@ pipeline {
             description: 'User used to authentificate to the GitLab server.')
     }
 
+    // TODO: Add Gerrit and GitLab server fingerprints to known_hosts instead
+    environment {
+        GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
+    }
+
     triggers {
         pollSCM "* * * * *"
     }
