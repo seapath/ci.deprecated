@@ -21,19 +21,10 @@ We use a docker-compose environment file in our _docker-compose.yaml_ to configu
 all the environment-specific settings.
 
 To generate this file, you can use the script `docker/generate_env.sh`.
-Before running the script, you must retrieve the network interface name where
-you want the PXE server listen to (you can archieve this with `ip addr`).
 
-Once you have it run the script :
 ```
-./generate_env.sh \
-    --interface your_interface \
-    --dhcp-range-begin first_dhcp_ip \
-    --dhcp-range-end last_dhcp_ip
+./generate_env.sh
 ```
-Replace your_interface by the network interface and first_dhcp_ip and
-last_dhcp_ip by the IP address range you want to define for the DHCP.
-This address range must be in the same network as your network interface.
 
 ### Build the images
 
