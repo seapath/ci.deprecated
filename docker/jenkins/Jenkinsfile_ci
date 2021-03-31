@@ -3,13 +3,17 @@
  * SPDX-License-Identifier: CC-BY-4.0
  *
  * Jenkins pipeline to be triggered after the synchronization of Gerrit
- * and GitLab (sfl/master branches):
- * - Fetch and build projects according to rte-sfl.xml manifest
- * - TODO: Pass corresponding tests
- * - If previous steps succeed, start job for merge sfl/master into rte/master
+ * and GitLab (sfl/master branches).
+ * - Fetch sources from rte-sfl.xml and GitLab ansible
+ * - Restart machines on the infrastructure to boot from PXE server
+ * - Build corresponding images and flash each machine
+ * - Reboot with the installed images
+ * - Configure and pass tests on every machine
+ * - Deploy, configure and test the VMs on the cluster
+ * - If all previous steps succeed, start 'merge' job
  *
  * Requirements:
- * - SSH Agent Plugin
+ * - SSH Agent, Blue Ocean and Junit plugins
  * - Set SSH key with name 'gitlab-credentials'
  *****************************************************************************/
 
@@ -28,52 +32,197 @@ pipeline {
     // TODO: Add gitlab server fingerprints to known_hosts instead
     environment {
         GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
+        YOCTO_CACHE_DIR = "/var/jenkins_home/yocto"
+        CQFD_EXTRA_RUN_ARGS = "-v ${YOCTO_CACHE_DIR}/dl:/mnt/dl -e DL_DIR=/mnt/dl \
+        -v ${YOCTO_CACHE_DIR}/sstate:/mnt/sstate -e SSTATE_DIR=/mnt/sstate"
+        IMAGES_DIR = "/var/jenkins_home/images"
+        BUILD_DIR = "build/tmp/deploy/images/votp"
     }
 
     stages {
 
-        stage("Clean workspace") {
+        stage("1. Prepare workspace") {
             steps {
                 cleanWs()
-            }
-        }
-
-        stage('CI') {
-            steps {
                 script {
-                    stage("Fetch") {
+                    stage("1.1. Fetch Sources") {
                         sshagent(credentials : ['gitlab-credentials']) {
                             sh """
                                 repo init -u "ssh://git@${GITLAB_URL}/${GITLAB_USER}/repo-manifest.git" \
                                 -m "rte-sfl.xml" -b "sfl/master"
                                 repo sync
-                            """
-                        }
-                    }
-                    stage("Build") {
-                        sshagent(credentials : ['gitlab-credentials']) {
-                            sh """
-                                ssh-add -L > keys/ansible_public_ssh_key.pub
                                 cqfd init
-                                cqfd -b flash_pxe
-                                cqfd
-                                # Copy to volume shared with PXE docker
-                                cp build/tmp/deploy/images/votp/{seapath-flash-pxe-votp.cpio.gz,bzImage,seapath-image-votp.wic.bmap,seapath-image-votp.wic.gz} /opt/images/
                             """
                         }
                     }
-                    stage("Ansible prepare") {
+                    stage("1.2. Ansible Prepare") {
                         sshagent(credentials : ['gitlab-credentials']) {
                             sh """
                                 git clone -b sfl/master \
                                 "[git@${GITLAB_URL}]:${GITLAB_USER}/ansible.git"
                                 cd ansible
-                                cqfd init
-                                cqfd -b prepare
-                                cqfd run ansible localhost -m ping
+                                ./prepare.sh
+                                echo "host_key_checking = False" >> ansible.cfg
+                                ansible localhost -m ping
                             """
                         }
                     }
+                    stage("1.3. Set SSH Key for Ansible") {
+                        sshagent(credentials : ['cluster']) {
+                            sh "ssh-add -L > keys/ansible_public_ssh_key.pub"
+                        }
+                    }
+                    stage("1.4. Create Images Dir") {
+                        sh "mkdir -p -v ${IMAGES_DIR}"
+                    }
+                }
+            }
+        }
+
+        stage ("2. Build Images") {
+            steps {
+                script {
+                    stage("2.1. Build Host Bios") {
+                        sh """
+                            cqfd -b host_bios
+                            cp ${BUILD_DIR}/seapath-host-bios-image-votp.wic.* ${IMAGES_DIR}
+                        """
+                    }
+                    stage("2.2. Build Observer BIOS") {
+                        sh """
+                            cqfd -b monitor_bios
+                            cp ${BUILD_DIR}/seapath-monitor-bios-image-votp.wic.* ${IMAGES_DIR}
+                        """
+                    }
+                    stage("2.3. Build PXE Flasher") {
+                        sh """
+                            cqfd -b flash_pxe
+                            cp ${BUILD_DIR}/seapath-flash-pxe-votp.cpio.gz ${IMAGES_DIR}
+                            cp ${BUILD_DIR}/bzImage ${IMAGES_DIR}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage("3. Boot from PXE") {
+            steps {
+                script {
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_prepare_machine.yaml
+                        """
+                    }
+                }
+            }
+        }
+
+        stage ("4. Flash Images") {
+            steps {
+                script {
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_flash_disk.yaml
+                        """
+                    }
+                }
+            }
+        }
+
+        stage("5. Configure Hosts") {
+            steps {
+                script {
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_configure_hosts.yaml
+                        """
+                    }
+                }
+            }
+        }
+
+        stage("6. Test Hosts") {
+            steps {
+                script {
+                    stage("6.1. Test Common") {
+                        sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                playbooks/ci_common_tests.yaml
+                            """
+                        }
+                        junit "ansible/playbooks/common/*/cukinia_common.xml"
+                    }
+                    stage("6.2. Test Hypervisors") {
+                        sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                playbooks/ci_hypervisor_tests.yaml
+                            """
+                        }
+                        junit "ansible/playbooks/hypervisor/*/cukinia_hypervisor.xml"
+                    }
+                }
+            }
+        }
+
+        stage("7. Configure Cluster") {
+            steps {
+                script {
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_configure_cluster.yaml
+                        """
+                    }
+                }
+            }
+        }
+
+        stage("8. Test Cluster") {
+            steps {
+                script {
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_cluster_tests.yaml
+                        """
+                        junit "ansible/playbooks/cluster/*/cukinia_cluster.xml"
+                    }
+                }
+            }
+        }
+
+        stage("9. Deploy VM") {
+            steps {
+                script {
+                    echo "Deploy VMs"
+                }
+            }
+        }
+
+        stage("10. Configure VM") {
+            steps {
+                script {
+                    echo "Configure VMs"
+                }
+            }
+        }
+
+        stage("11. Test VM") {
+            steps {
+                script {
+                    echo "Test VMs"
                 }
             }
         }
@@ -81,7 +230,7 @@ pipeline {
 
     post {
         success {
-            echo "Synchronization finished, start 'merge' job."
+            echo "CI succeed, start 'merge' job."
             build job: "merge"
         }
 
