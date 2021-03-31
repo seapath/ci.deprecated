@@ -20,11 +20,19 @@ on the host machine.
 We use a docker-compose environment file in our _docker-compose.yaml_ to configure
 all the environment-specific settings.
 
-To generate this file, you can use the script `docker/generate_env.sh`.
+To generate this file, you can use the script _docker/generate_env.sh_.
 
 ```
 ./generate_env.sh
 ```
+
+#### Yocto cache
+
+The script _docker/generate_env.sh_ also creates the folder where
+Yocto cache will be stored (_/var/jenkins_home/yocto_). If you ever
+need to update the cache you can store the sstate Yocto cache into
+_/var/jenkins_home/yocto/sstate_.
+
 
 ### Build the images
 
@@ -62,24 +70,26 @@ Jenkins UI can be accessed from a navigator with `localhost:8080`. The
 initial password for the `admin` user can be found inside
 `/var/jenkins_home/secrets/initialAdminPassword`.
 
-Install plugins `SSH Agent`, `Pipeline`, `Pipeline Stage View` and
-`JUnit`.
+Install plugins `SSH Agent`, `Pipeline`, `Pipeline Stage View`,
+`JUnit` and `Blue Ocean`.
 
 Following configuration can be left with the default values by
 selecting `Skip and continue as admin`, `Instance configuration: Not
 now` and `Start using jenkins`.
 
-### Credentials
+### SSH Credentials
 
-SSH keys used to access Gerrit and GitLab servers can be added from
-`Manage Jenkins > Manage Credentials > Global Credentials > Add
-Credentials`.
+Three SSH credentials need to be configured in order to access Gerrit
+server, GitLab server and the cluster machines.
+
+You can add them from `Manage Jenkins > Manage Credentials > Global
+Credentials > Add Credentials`.
 
 Select `Kind: SSH Username with private key` and enter its `ID`,
 `Username`, `Private Key` and `Passphrase`.
 
 Note: The `ID` for each key needs to be accordingly set to
-`gerrit-credentials` and `gitlab-credentials`.
+`gerrit-credentials`, `gitlab-credentials` and `cluster`.
 
 ### Create jobs and import pipeline from SCM
 

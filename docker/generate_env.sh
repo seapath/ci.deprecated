@@ -20,6 +20,11 @@ if [ ! -d /var/jenkins_home ] ; then
     sudo chown -R 1000:1000 /var/jenkins_home
 fi
 
+if [ ! -d /var/jenkins_home/yocto ] ; then
+    sudo mkdir -p -v /var/jenkins_home/yocto
+    sudo chown -R 1000:1000 /var/jenkins_home/yocto
+fi
+
 cat >.env << EOF
 _CI_DOCKER_GID=${docker_gid}
 EOF
