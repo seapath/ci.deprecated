@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 FROM alpine:3.13
-
-ENV DHCP_RANGE_BEGIN 192.168.111.50
-ENV DHCP_RANGE_END 192.168.111.100
+ARG DHCP_RANGE_BEGIN=192.168.111.50
+ARG DHCP_RANGE_END=192.168.111.100
+ARG DHCP_BIND_INTERFACE=eth0
 
 RUN apk --no-cache add dnsmasq syslinux
 RUN mkdir /tftpboot
@@ -15,7 +15,8 @@ RUN mkdir /tftpboot/pxelinux.cfg
 COPY syslinux.cfg /tftpboot/pxelinux.cfg/default
 COPY dnsmasq.conf /etc/dnsmasq.conf
 COPY pxe_extra_config/* /etc/dnsmasq.d/
+RUN echo "dhcp-range=${DHCP_RANGE_BEGIN},${DHCP_RANGE_END},48h" \
+    > /etc/dnsmasq.more.conf
+RUN echo "interface=${DHCP_BIND_INTERFACE}" >> /etc/dnsmasq.more.conf
 VOLUME /tftpboot/images
-COPY entry.sh /usr/bin/entry.sh
-RUN chmod +x /usr/bin/entry.sh
-CMD /usr/bin/entry.sh
+CMD /usr/sbin/dnsmasq --keep-in-foreground --log-facility=-

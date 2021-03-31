@@ -12,16 +12,18 @@ To do so, follow these steps:
 * generate with Yocto the *seapath-flash-pxe* image
 * create in the current folder the *images* folder
 * copy the files *bzImage* and *seapath-flash-pxe-votp.cpio.gz* to the *images* folder
-* build the PXE image with docker: `docker build . --tag pxe`
+* build the PXE image with docker:
+    `docker build . \
+        --tag pxe \
+        --build-arg DHCP_RANGE_BEGIN=192.168.111.50 \
+        --build-arg DHCP_RANGE_END=192.168.111.100 \
+        --build-arg DHCP_BIND_INTERFACE=eth0`
 * connect the PC to the PXE network
 * run the PXE container:
   `docker run \
             --rm \
             -it \
             -v $(pwd)/images:/tftpboot/images \
-            -e DHCP_RANGE_BEGIN=192.168.111.50 \
-            -e DHCP_RANGE_END=192.168.111.100 \
-            -e DHCP_BIND_INTERFACE=eth0 \
             --cap-add NET_ADMIN \
             --net host pxe`
 * start the machine you want to boot
