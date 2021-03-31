@@ -3,19 +3,6 @@
 ---
 version: "3.3"
 services:
-    pxe:
-        build: ./pxe
-        cap_add:
-            - NET_ADMIN
-        network_mode: host
-        environment:
-            - DHCP_RANGE_BEGIN=${_CI_DHCP_RANGE_BEGIN}
-            - DHCP_RANGE_END=${_CI_DHCP_RANGE_END}
-            - DHCP_BIND_INTERFACE=${_CI_DHCP_INTERFACE}
-        restart: unless-stopped
-        volumes:
-            - images:/tftpboot/images
-            - pxe_extra_config:/etc/dnsmasq.d/
     jenkins:
         build:
             context: ./jenkins
@@ -26,7 +13,6 @@ services:
             - /var/jenkins_home:/var/jenkins_home
             - /var/run/docker.sock:/var/run/docker.sock
             - /tmp:/tmp
-            - images:/opt/images
             - .:/opt/docker
         ports:
             - "8080:8080/tcp"
@@ -37,6 +23,3 @@ services:
         network_mode: bridge
         ports:
             - "123:123/udp"
-volumes:
-    images:
-    pxe_extra_config:
