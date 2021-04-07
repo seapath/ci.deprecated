@@ -91,6 +91,72 @@ Select `Kind: SSH Username with private key` and enter its `ID`,
 Note: The `ID` for each key needs to be accordingly set to
 `gerrit-credentials`, `gitlab-credentials` and `cluster`.
 
+### Install the CI material
+
+#### Prerequisites
+
+To be able to use Jenkins CI Jobs, the following material is required:
+
+* 2 hypervisor machines
+
+Those machines must be 64 bits Intel architecture with a NIC DPDK compatible.
+Each hypervisor should have 2 distinct harddisks:
+
+* One disk for the system
+* One disk for Ceph
+
+* 1 observer machine
+
+1 observer machine must be provided in order to create a cluster quorum.
+
+* 1 EG-PMS2-LAN programmable power supply
+
+This programmable power supply will be triggered by Jenkins to electrically restart the machines.
+
+Hypervisor and observer machines must be configured to:
+
+1. Boot from PXE in first priority in the bios configuration
+2. Automatically power on the machine
+
+#### Network configuration
+
+The CI needs at least three networks to work:
+
+* a management network which includes
+- The hypervisors and the observer
+- The CI server
+
+* a cluster network which includes:
+- The hypervisors and the observer
+
+* a VMs network which includes
+- The two hypervisors connected with a DPDK compatible Ethernet NIC
+
+1. Configure the PXE
+
+```rte_ci.conf``` should be filled in with the following information:
+
+The MAC address should be described as first argument following by its IP address.
+The IP addresses should be static or have fixed DHCP leasing.
+
+```
+# Programmable power supply
+dhcp-host=??:??:??:??:??:??,???.???.???.???
+# Hypervisor 1
+dhcp-host=??:??:??:??:??:??,???.???.???.???
+# Hypervisor 2
+dhcp-host=??:??:??:??:??:??,???.???.???.???
+# Observer
+dhcp-host=??:??:??:??:??:??,???.???.???.???
+```
+
+2. Adapt the Ansible inventory
+
+The Ansible inventory will be used by Ansible to configure each machine of the CI
+and trigger the electrical reboots.
+
+The inventories inventories/rte_ci.yaml should be modified with the Network configuration.
+
 ### Create jobs and import pipeline from SCM
 
 Current CI is based on three jenkins jobs and their corresponding
