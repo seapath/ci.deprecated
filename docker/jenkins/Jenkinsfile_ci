@@ -17,17 +17,15 @@
  * - Set SSH key with name 'gitlab-credentials'
  *****************************************************************************/
 
+// Parametrized properties. Default values can be overwritten by setting the
+// configuration file /var/jenkins_home/jenkins.properties
+def def_values = [GITLAB_URL: "10.132.156.199:2200",
+                  GITLAB_USER: "root",
+                  REPO_BRANCH: "sfl/master"]
+def p // Global variable to handle properties
+
 pipeline {
     agent any
-
-    parameters {
-        string(name: 'GITLAB_URL',
-            defaultValue: '10.132.156.199:2200',
-            description: 'GitLab server URL')
-        string(name: 'GITLAB_USER',
-            defaultValue: 'root',
-            description: 'User used to authentificate to the GitLab server.')
-    }
 
     // TODO: Add gitlab server fingerprints to known_hosts instead
     environment {
@@ -37,6 +35,7 @@ pipeline {
         -v ${YOCTO_CACHE_DIR}/sstate:/mnt/sstate -e SSTATE_DIR=/mnt/sstate"
         IMAGES_DIR = "/var/jenkins_home/images"
         BUILD_DIR = "build/tmp/deploy/images/votp"
+        CONFIG_FILE = "/var/jenkins_home/jenkins.properties"
     }
 
     stages {
@@ -45,21 +44,24 @@ pipeline {
             steps {
                 cleanWs()
                 script {
-                    stage("1.1. Fetch Sources") {
+                    stage("1.1 Read Config File") {
+                        p = readProperties defaults: def_values, file: "${CONFIG_FILE}"
+                    }
+                    stage("1.2. Fetch Sources") {
                         sshagent(credentials : ['gitlab-credentials']) {
                             sh """
-                                repo init -u "ssh://git@${GITLAB_URL}/${GITLAB_USER}/repo-manifest.git" \
-                                -m "rte-sfl.xml" -b "sfl/master"
+                                repo init -u "ssh://git@$p.GITLAB_URL/$p.GITLAB_USER/repo-manifest.git" \
+                                -m "rte-sfl.xml" -b "$p.REPO_BRANCH"
                                 repo sync
                                 cqfd init
                             """
                         }
                     }
-                    stage("1.2. Ansible Prepare") {
+                    stage("1.3. Ansible Prepare") {
                         sshagent(credentials : ['gitlab-credentials']) {
                             sh """
                                 git clone -b sfl/master \
-                                "[git@${GITLAB_URL}]:${GITLAB_USER}/ansible.git"
+                                "[git@$p.GITLAB_URL]:$p.GITLAB_USER/ansible.git"
                                 cd ansible
                                 ./prepare.sh
                                 echo "host_key_checking = False" >> ansible.cfg
@@ -67,12 +69,12 @@ pipeline {
                             """
                         }
                     }
-                    stage("1.3. Set SSH Key for Ansible") {
+                    stage("1.4. Set SSH Key for Ansible") {
                         sshagent(credentials : ['cluster']) {
                             sh "ssh-add -L > keys/ansible_public_ssh_key.pub"
                         }
                     }
-                    stage("1.4. Create Images Dir") {
+                    stage("1.5. Create Images Dir") {
                         sh "mkdir -p -v ${IMAGES_DIR}"
                     }
                 }

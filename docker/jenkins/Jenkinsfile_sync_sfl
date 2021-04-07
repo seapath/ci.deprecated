@@ -11,27 +11,21 @@
  * - Set SSH credentials ('gerrit-credentials' and 'gitlab-credentials')
  *****************************************************************************/
 
+// Parametrized properties. Default values can be overwritten by setting the
+// configuration file /var/jenkins_home/jenkins.properties
+def def_values = [GERRIT_URL: "g1.sfl.team:29419",
+                  GERRIT_USER: "rteci",
+                  GITLAB_URL: "10.132.156.199:2200",
+                  GITLAB_USER: "root"]
+def p // Global variable to handle properties
+
 pipeline {
     agent any
-
-    parameters {
-        string(name: 'GERRIT_URL',
-            defaultValue: 'g1.sfl.team:29419',
-            description: 'Gerrit server URL')
-        string(name: 'GERRIT_USER',
-            defaultValue: 'rteci',
-            description: 'User used to authentificate to the Gerrit server.')
-        string(name: 'GITLAB_URL',
-            defaultValue: '10.132.156.199:2200',
-            description: 'GitLab server URL')
-        string(name: 'GITLAB_USER',
-            defaultValue: 'root',
-            description: 'User used to authentificate to the GitLab server.')
-    }
 
     // TODO: Add Gerrit and GitLab server fingerprints to known_hosts instead
     environment {
         GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
+        CONFIG_FILE = "/var/jenkins_home/jenkins.properties"
     }
 
     triggers {
@@ -40,23 +34,26 @@ pipeline {
 
     stages {
 
-        stage("Clean workspace") {
+        stage("Prepare workspace") {
             steps {
                 cleanWs()
+                script {
+                    p = readProperties defaults: def_values, file: "${CONFIG_FILE}"
+                }
             }
         }
 
         stage("Sync meta-seapath") {
             steps {
-                dir("meta-seapath"){
+                dir("meta-seapath") {
                     git branch: 'sfl/master',
                     credentialsId: 'gerrit-credentials',
-                    url: "ssh://${GERRIT_USER}@${GERRIT_URL}/rte/votp/meta-seapath"
+                    url: "ssh://$p.GERRIT_USER@$p.GERRIT_URL/rte/votp/meta-seapath"
 
                     sshagent(credentials : ['gitlab-credentials']) {
                         sh """
                             git remote add secondary \
-                            "[git@${GITLAB_URL}]:${GITLAB_USER}/meta-seapath.git"
+                            "[git@$p.GITLAB_URL]:$p.GITLAB_USER/meta-seapath.git"
                             git fetch secondary sfl/master
                             git push secondary sfl/master
                         """
@@ -67,15 +64,15 @@ pipeline {
 
         stage("Sync yocto-bsp") {
             steps {
-                dir("yocto-bsp"){
+                dir("yocto-bsp") {
                     git branch: 'sfl/master',
                     credentialsId: 'gerrit-credentials',
-                    url: "ssh://${GERRIT_USER}@${GERRIT_URL}/rte/votp/yocto-bsp"
+                    url: "ssh://$p.GERRIT_USER@$p.GERRIT_URL/rte/votp/yocto-bsp"
 
                     sshagent(credentials : ['gitlab-credentials']) {
                         sh """
                             git remote add secondary \
-                            "[git@${GITLAB_URL}]:${GITLAB_USER}/yocto-bsp.git"
+                            "[git@$p.GITLAB_URL]:$p.GITLAB_USER/yocto-bsp.git"
                             git fetch secondary sfl/master
                             git push secondary sfl/master
                         """
@@ -86,15 +83,15 @@ pipeline {
 
         stage("Sync repo-manifest") {
             steps {
-                dir("repo-manifest"){
+                dir("repo-manifest") {
                     git branch: 'sfl/master',
                     credentialsId: 'gerrit-credentials',
-                    url: "ssh://${GERRIT_USER}@${GERRIT_URL}/rte/votp/repo-manifest"
+                    url: "ssh://$p.GERRIT_USER@$p.GERRIT_URL/rte/votp/repo-manifest"
 
                     sshagent(credentials : ['gitlab-credentials']) {
                         sh """
                             git remote add secondary \
-                            "[git@${GITLAB_URL}]:${GITLAB_USER}/repo-manifest.git"
+                            "[git@$p.GITLAB_URL]:$p.GITLAB_USER/repo-manifest.git"
                             git fetch secondary sfl/master
                             git push secondary sfl/master
                         """
@@ -105,15 +102,15 @@ pipeline {
 
         stage("Sync ansible") {
             steps {
-                dir("ansible"){
+                dir("ansible") {
                     git branch: 'sfl/master',
                     credentialsId: 'gerrit-credentials',
-                    url: "ssh://${GERRIT_USER}@${GERRIT_URL}/rte/votp/ansible"
+                    url: "ssh://$p.GERRIT_USER@$p.GERRIT_URL/rte/votp/ansible"
 
                     sshagent(credentials : ['gitlab-credentials']) {
                         sh """
                             git remote add secondary \
-                            "[git@${GITLAB_URL}]:${GITLAB_USER}/ansible.git"
+                            "[git@$p.GITLAB_URL]:$p.GITLAB_USER/ansible.git"
                             git fetch secondary sfl/master
                             git push secondary sfl/master
                         """

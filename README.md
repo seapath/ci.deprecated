@@ -71,7 +71,7 @@ initial password for the `admin` user can be found inside
 `/var/jenkins_home/secrets/initialAdminPassword`.
 
 Install plugins `SSH Agent`, `Pipeline`, `Pipeline Stage View`,
-`JUnit` and `Blue Ocean`.
+`JUnit`, `Blue Ocean` and `Pipeline Utility Steps`.
 
 Following configuration can be left with the default values by
 selecting `Skip and continue as admin`, `Instance configuration: Not
@@ -174,9 +174,11 @@ script:
   GitLab sfl/master into rte/master branch.
 
 In order to create each job you can select `New item > Pipeline` from
-the main Jenkins UI. Then, select `Pipeline script from SCM` on the
-`Pipeline -> Definition` scrollable menu. The following configuration
-must be set:
+the main Jenkins UI. Note: The name for the last two jobs needs to be
+accordingly set to `ci` and `merge`.
+
+Then, select `Pipeline script from SCM` on the `Pipeline ->
+Definition` scrollable menu. The following configuration must be set:
 
 - SCM: Git
 - Repository URL: `ssh://rteci@g1.sfl.team:29419/rte/votp/ci`
@@ -187,11 +189,12 @@ must be set:
 You can save the job and reproduce the same process for each of the
 three.
 
-Jenkinsfile scripts contain the parametrization and schedule for the
-job. In order to apply the configuration, each job must be run
-once. After that, the button `Build with parameters` should be
-available for subsequentent builds.
-
-Once the configuration has been done the three jobs should be
+In order to apply the configuration of the Jenkinsfile_sync_sfl, its
+job must be run once. After that, the three jobs should be
 sequentially triggered for every new commit merged on Gerrit's
 sfl/master branch.
+
+Default parameters for accessing Gerrit and GitLab are directly set on
+the Jenkinsfiles, if you ever need to change them, you can modify the
+values from `docker/jenkins/extra_config/rte.properties` and
+copy-paste it to `/var/jenkins_home/jenkins.properties`.

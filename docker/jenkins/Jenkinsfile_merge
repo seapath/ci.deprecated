@@ -10,31 +10,32 @@
  * - Set SSH key with name 'gitlab-credentials'
  *****************************************************************************/
 
+// Parametrized properties. Default values can be overwritten by setting the
+// configuration file /var/jenkins_home/jenkins.properties
+def def_values = [GITLAB_URL: "10.132.156.199:2200",
+                  GITLAB_USER: "root"]
+
+def p // Global variable to handle properties
+
+def project_list = ["meta-seapath", "yocto-bsp", "repo-manifest", "ansible"]
+
 pipeline {
     agent any
-
-    parameters {
-        string(name: 'GITLAB_URL',
-            defaultValue: '10.132.156.199:2200',
-            description: 'GitLab server URL')
-        string(name: 'GITLAB_USER',
-            defaultValue: 'root',
-            description: 'User used to authentificate to the GitLab server.')
-        string(name: 'PROJECTS',
-            defaultValue: 'meta-seapath,yocto-bsp,repo-manifest,ansible',
-            description: 'List of projects separated by commas without spaces')
-    }
 
     // TODO: Add gerrit and gitlab server fingerprints to known_hosts instead
     environment {
         GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
+        CONFIG_FILE = "/var/jenkins_home/jenkins.properties"
     }
 
     stages {
 
-        stage("Clean workspace") {
+        stage("Prepare workspace") {
             steps {
                 cleanWs()
+                script {
+                    p = readProperties defaults: def_values, file: "${CONFIG_FILE}"
+                }
             }
         }
 
@@ -42,12 +43,11 @@ pipeline {
             steps {
                 sshagent(credentials : ['gitlab-credentials']) {
                     script {
-                        def project_list = PROJECTS.split(',')
                         for (project in project_list) {
                             stage("Merge ${project}") {
                                 sh """
                                     git clone -b rte/master \
-                                    "[git@${GITLAB_URL}]:${GITLAB_USER}/${project}.git"
+                                    "[git@$p.GITLAB_URL]:$p.GITLAB_USER/${project}.git"
                                     cd ${project}
                                     git merge --ff-only origin/sfl/master
                                     git push origin rte/master
