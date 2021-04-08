@@ -13,8 +13,10 @@
  * - If all previous steps succeed, start 'merge' job
  *
  * Requirements:
- * - SSH Agent, Blue Ocean and Junit plugins
- * - Set SSH key with name 'gitlab-credentials'
+ * - Install plugins: SSH Agent, Blue Ocean, Junit, Pipeline Utility Steps and
+ * Throttle Concurrent Builds
+ * - Set SSH key with name 'gitlab-credentials' and 'cluster'
+ * - Configure Throttle Concurrent Builds according to README.md
  *****************************************************************************/
 
 // Parametrized properties. Default values can be overwritten by setting the
@@ -26,6 +28,16 @@ def p // Global variable to handle properties
 
 pipeline {
     agent any
+
+    // Prevent concurrent execution of jobs tagged with "cluster" category
+    options {
+        throttleJobProperty(
+            categories: ['cluster'],
+            throttleEnabled: true,
+            throttleOption: 'category',
+            maxConcurrentPerNode: 1,
+            maxConcurrentTotal: 1)
+    }
 
     // TODO: Add gitlab server fingerprints to known_hosts instead
     environment {

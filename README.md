@@ -71,7 +71,8 @@ initial password for the `admin` user can be found inside
 `/var/jenkins_home/secrets/initialAdminPassword`.
 
 Install plugins `SSH Agent`, `Pipeline`, `Pipeline Stage View`,
-`JUnit`, `Blue Ocean` and `Pipeline Utility Steps`.
+`JUnit`, `Blue Ocean`, `Pipeline Utility Steps` and `Throttle
+Concurrent Builds`.
 
 Following configuration can be left with the default values by
 selecting `Skip and continue as admin`, `Instance configuration: Not
@@ -90,6 +91,22 @@ Select `Kind: SSH Username with private key` and enter its `ID`,
 
 Note: The `ID` for each key needs to be accordingly set to
 `gerrit-credentials`, `gitlab-credentials` and `cluster`.
+
+### Throttle Concurrent Builds
+
+To prevent simultaneous access to the cluster machines from different
+Jenkins jobs, the plugin `Throttle Concurrent Builds` is used.
+
+Please, make sure it is installed. Then you can access its
+configuration from `Manage Jenkins > Configure System > Throttle
+Concurrent Builds` and set the following values under `Multi-project
+Throttle Categories`:
+
+* Category Name: cluster
+* Maximum Total Concurrent Builds: 1
+* Maximum Concurrent Builds Per Node: 1
+
+Finally you can save the configuration.
 
 ### Install the CI material
 
