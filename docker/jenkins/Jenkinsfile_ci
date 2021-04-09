@@ -115,6 +115,12 @@ pipeline {
                             cp ${BUILD_DIR}/bzImage ${IMAGES_DIR}
                         """
                     }
+                    stage("2.4. Build Guest EFI") {
+                        sh """
+                            cqfd -b guest_efi
+                            cp ${BUILD_DIR}/seapath-guest-efi-image-votp.wic.qcow2 ${IMAGES_DIR}
+                        """
+                    }
                 }
             }
         }
@@ -220,7 +226,13 @@ pipeline {
         stage("9. Deploy VM") {
             steps {
                 script {
-                    echo "Deploy VMs"
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_deploy_vms.yaml
+                        """
+                    }
                 }
             }
         }
