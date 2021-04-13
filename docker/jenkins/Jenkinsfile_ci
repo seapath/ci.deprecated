@@ -29,6 +29,19 @@ def p // Global variable to handle properties
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(
+            name: 'RUN_RT_TEST',
+            defaultValue: false,
+            description: 'Run real time tests (Warning: long and invasive tests)'
+            )
+        string(
+            name: 'MAX_LATENCY',
+            defaultValue: '200',
+            description: 'Maximal latency to reach (us)'
+            )
+    }
+
     // Prevent concurrent execution of jobs tagged with "cluster" category
     options {
         throttleJobProperty(
@@ -48,6 +61,7 @@ pipeline {
         IMAGES_DIR = "/var/jenkins_home/images"
         BUILD_DIR = "build/tmp/deploy/images/votp"
         CONFIG_FILE = "/var/jenkins_home/jenkins.properties"
+        TMP_FILE=".all_latencies"
     }
 
     stages {
@@ -106,11 +120,20 @@ pipeline {
         stage ("2. Build Images") {
             steps {
                 script {
-                    stage("2.1. Build Host Bios") {
-                        sh """
-                            cqfd -b host_bios
-                            cp ${BUILD_DIR}/seapath-host-bios-image-votp.wic.* ${IMAGES_DIR}
-                        """
+                    if (params.RUN_RT_TEST) {
+                        stage("2.1. Build Host Bios Test") {
+                            sh """
+                                cqfd -b host_bios_test
+                                cp ${BUILD_DIR}/seapath-host-bios-test-image-votp.wic.* ${IMAGES_DIR}
+                            """
+                        }
+                    }else{
+                        stage("2.1. Build Host Bios") {
+                            sh """
+                                cqfd -b host_bios
+                                cp ${BUILD_DIR}/seapath-host-bios-image-votp.wic.* ${IMAGES_DIR}
+                            """
+                        }
                     }
                     stage("2.2. Build Observer BIOS") {
                         sh """
@@ -125,11 +148,20 @@ pipeline {
                             cp ${BUILD_DIR}/bzImage ${IMAGES_DIR}
                         """
                     }
-                    stage("2.4. Build Guest EFI") {
-                        sh """
-                            cqfd -b guest_efi
-                            cp ${BUILD_DIR}/seapath-guest-efi-image-votp.wic.qcow2 ${IMAGES_DIR}
-                        """
+                    if (params.RUN_RT_TEST) {
+                        stage("2.4. Build Guest EFI Test") {
+                            sh """
+                                cqfd -b guest_efi_test
+                                cp ${BUILD_DIR}/seapath-guest-efi-test-image-votp.wic.qcow2 ${IMAGES_DIR}
+                            """
+                        }
+                    }else{
+                        stage("2.4. Build Guest EFI") {
+                            sh """
+                                cqfd -b guest_efi
+                                cp ${BUILD_DIR}/seapath-guest-efi-image-votp.wic.qcow2 ${IMAGES_DIR}
+                            """
+                        }
                     }
                 }
             }
@@ -152,12 +184,31 @@ pipeline {
         stage ("4. Flash Images") {
             steps {
                 script {
-                    sshagent(credentials : ['cluster']) {
-                        sh """
-                            cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_flash_disk.yaml
-                        """
+                    if (params.RUN_RT_TEST) {
+                        sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                --extra-vars image_path="${IMAGES_DIR}/seapath-host-bios-test-image-votp.wic.gz" \
+                                --limit "pxe_hypervisor*" \
+                                playbooks/ci_flash_disk.yaml
+                            """
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp.wic.gz" \
+                                --limit "pxe_observer" \
+                                playbooks/ci_flash_disk.yaml
+                            """
+                        }
+                    }else{
+                        sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                playbooks/ci_flash_disk.yaml
+                            """
+                        }
                     }
                 }
             }
@@ -245,16 +296,32 @@ pipeline {
         stage("9. Deploy VM") {
             steps {
                 script {
-                    sshagent(credentials : ['cluster']) {
-                        sh """
-                            cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_deploy_vms.yaml
+                    if (params.RUN_RT_TEST) {
+                        sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                --extra-vars image_directory="${IMAGES_DIR}" \
+                                --extra-vars guest_image=seapath-guest-efi-test-image-votp.wic.qcow2 \
+                                playbooks/ci_deploy_vms.yaml
 
-                            # Verify correct deployment
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_test_vm_status.yaml
-                        """
+                                # Verify correct deployment
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                playbooks/ci_test_vm_status.yaml
+                            """
+                        }
+                    }else{
+                        sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                playbooks/ci_deploy_vms.yaml
+
+                                # Verify correct deployment
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                playbooks/ci_test_vm_status.yaml
+                            """
+                        }
                     }
                 }
             }
@@ -283,7 +350,36 @@ pipeline {
                             ansible-playbook -i inventories/sfl_ci.yaml \
                             playbooks/ci_vm_tests.yaml
                         """
-                        junit "ansible/playbooks/vm/*/cukinia_vm.xml"
+                    }
+                    junit "ansible/playbooks/vm/*/cukinia_vm.xml"
+
+                    if (params.RUN_RT_TEST) {
+                        sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                playbooks/ci_realtime_tests.yaml
+                            """
+                        }
+                        junit "ansible/playbooks/realtime/*/cukinia_realtime.xml"
+
+                        max_found = sh(
+                            script: """
+                                [ -f \$TMP_FILE ] && rm \$TMP_FILE && touch \$TMP_FILE
+                                base_dir="ansible/playbooks/realtime"
+                                for file in `find \$base_dir -name output`; do
+                                    max=`grep "Max Latencies" \$file \
+                                        | tr " " "\n" | sort -n | tail -1 | sed s/^0*//)`
+                                    echo \$max >> \$TMP_FILE
+                                done
+                                echo `sort -n -r \$TMP_FILE | head -n 1`
+                                """, returnStdout: true
+                                ).trim()
+
+                        currentBuild.description = "Max latency: " + max_found.toString()
+                        if (max_found.toInteger() > MAX_LATENCY.toInteger()) {
+                            error "Maximal latency reached"
+                        }
                     }
                 }
             }
