@@ -86,6 +86,11 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
                         if (!imgCheck) {
                             error "Could not find all images, please check ${IMAGE_PATH}"
                         }
+                        echo "copying PXE images to root directory"
+                        sh """
+                            cp ${IMAGE_PATH}/bzImage /var/jenkins_home/images/
+                            cp ${IMAGE_PATH}/seapath-flash-pxe-votp.cpio.gz /var/jenkins_home/images/
+                        """
                     }
 
                     stage("1.3. Ansible Prepare") {
