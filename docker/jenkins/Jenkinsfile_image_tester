@@ -219,6 +219,10 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
                             ansible-playbook -i inventories/sfl_ci.yaml \
                             --extra-vars image_directory="${IMAGE_PATH}" \
                             playbooks/ci_deploy_vms.yaml
+
+                            # Verify correct deployment
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_test_vm_status.yaml
                         """
                     }
                 }
