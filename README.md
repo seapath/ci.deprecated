@@ -106,6 +106,13 @@ Throttle Categories`:
 * Maximum Total Concurrent Builds: 1
 * Maximum Concurrent Builds Per Node: 1
 
+It is also necessary to configure another category for the
+synchronization jobs:
+
+* Category Name: sync
+* Maximum Total Concurrent Builds: 1
+* Maximum Concurrent Builds Per Node: 1
+
 Finally you can save the configuration.
 
 ### Install the CI material

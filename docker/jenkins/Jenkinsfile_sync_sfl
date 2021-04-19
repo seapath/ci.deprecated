@@ -22,6 +22,16 @@ def p // Global variable to handle properties
 pipeline {
     agent any
 
+    // Prevent concurrent execution of jobs tagged with "sync" category
+    options {
+        throttleJobProperty(
+            categories: ['sync'],
+            throttleEnabled: true,
+            throttleOption: 'category',
+            maxConcurrentPerNode: 1,
+            maxConcurrentTotal: 1)
+    }
+
     // TODO: Add Gerrit and GitLab server fingerprints to known_hosts instead
     environment {
         GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
