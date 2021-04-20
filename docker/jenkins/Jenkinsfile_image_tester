@@ -240,7 +240,14 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
         stage("11. Test VM") {
             steps {
                 script {
-                    echo "Test VMs"
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_vm_tests.yaml
+                        """
+                        junit "ansible/playbooks/vm/*/cukinia_vm.xml"
+                    }
                 }
             }
         }
