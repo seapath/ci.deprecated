@@ -190,6 +190,15 @@ pipeline {
                         }
                         junit "ansible/playbooks/hypervisor/*/cukinia_hypervisor.xml"
                     }
+                    stage("6.3. Test openvswitch") {
+                        sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                playbooks/ci_ovs_tests.yaml
+                            """
+                        }
+                    }
                 }
             }
         }
