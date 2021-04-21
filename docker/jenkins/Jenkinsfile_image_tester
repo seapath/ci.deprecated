@@ -258,4 +258,22 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
     }
+    post {
+        success {
+            echo "CI succeed"
+        }
+        failure {
+            echo "Did not succeed!"
+            script {
+                sh """
+                    if docker ps |grep -q ci_pxe ; then
+                        docker stop ci_pxe
+                    fi
+                    if docker ps |grep -q ci_dhcp_vm ; then
+                        docker stop ci_dhcp_vm
+                    fi
+                """
+            }
+        }
+   }
 }
