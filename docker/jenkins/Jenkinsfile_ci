@@ -253,7 +253,13 @@ pipeline {
         stage("10. Configure VM") {
             steps {
                 script {
-                    echo "Configure VMs"
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_configure_vm.yaml
+                        """
+                    }
                 }
             }
         }
