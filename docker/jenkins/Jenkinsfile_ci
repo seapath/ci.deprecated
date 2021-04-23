@@ -59,7 +59,17 @@ pipeline {
                     stage("1.1 Read Config File") {
                         p = readProperties defaults: def_values, file: "${CONFIG_FILE}"
                     }
-                    stage("1.2. Fetch Sources") {
+                    stage("1.2. Stop containers") {
+                        sh """
+                            if docker ps |grep -q ci_pxe ; then
+                                docker stop ci_pxe
+                            fi
+                            if docker ps |grep -q ci_dhcp_vm ; then
+                                docker stop ci_dhcp_vm
+                            fi
+                        """
+                    }
+                    stage("1.3. Fetch Sources") {
                         sshagent(credentials : ['gitlab-credentials']) {
                             sh """
                                 repo init -u "ssh://git@$p.GITLAB_URL/$p.GITLAB_USER/repo-manifest.git" \
@@ -69,7 +79,7 @@ pipeline {
                             """
                         }
                     }
-                    stage("1.3. Ansible Prepare") {
+                    stage("1.4. Ansible Prepare") {
                         sshagent(credentials : ['gitlab-credentials']) {
                             sh """
                                 git clone -b sfl/master \
@@ -81,12 +91,12 @@ pipeline {
                             """
                         }
                     }
-                    stage("1.4. Set SSH Key for Ansible") {
+                    stage("1.5. Set SSH Key for Ansible") {
                         sshagent(credentials : ['cluster']) {
                             sh "ssh-add -L > keys/ansible_public_ssh_key.pub"
                         }
                     }
-                    stage("1.5. Create Images Dir") {
+                    stage("1.6. Create Images Dir") {
                         sh "mkdir -p -v ${IMAGES_DIR}"
                     }
                 }
