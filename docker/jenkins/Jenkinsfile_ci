@@ -226,7 +226,7 @@ pipeline {
                             ansible-playbook -i inventories/sfl_ci.yaml \
                             playbooks/ci_cluster_tests.yaml
                         """
-                        junit "ansible/playbooks/cluster/*/cukinia_cluster.xml"
+                        junit "ansible/playbooks/cluster/cukinia_cluster.xml"
                     }
                 }
             }
