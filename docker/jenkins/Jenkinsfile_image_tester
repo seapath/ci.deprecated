@@ -122,7 +122,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage("3. Boot from PXE") {
+        stage("2. Boot from PXE") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -136,7 +136,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage ("4. Flash Images") {
+        stage ("3. Flash Images") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -151,7 +151,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage("5. Configure Hosts") {
+        stage("4. Configure Hosts") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -165,10 +165,10 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage("6. Test Hosts") {
+        stage("5. Test Hosts") {
             steps {
                 script {
-                    stage("6.1. Test Common") {
+                    stage("5.1. Test Common") {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
@@ -178,7 +178,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
                         }
                         junit "ansible/playbooks/common/*/cukinia_common.xml"
                     }
-                    stage("6.2. Test Hypervisors") {
+                    stage("5.2. Test Hypervisors") {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
@@ -192,7 +192,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage("7. Configure Cluster") {
+        stage("6. Configure Cluster") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -206,7 +206,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage("8. Test Cluster") {
+        stage("7. Test Cluster") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -221,7 +221,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage("9. Deploy VM") {
+        stage("8. Deploy VM") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -240,7 +240,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage("10. Configure VM") {
+        stage("9. Configure VM") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -254,7 +254,7 @@ Note: images need to be built with the 'cluster' ansible SSH public key \
             }
         }
 
-        stage("11. Test VM") {
+        stage("10. Test VM") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
