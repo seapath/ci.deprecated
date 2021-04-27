@@ -384,6 +384,20 @@ pipeline {
                 }
             }
         }
+        stage("12. Test Common 2nd call") {
+            steps {
+                script {
+                    sshagent(credentials : ['cluster']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_common_tests.yaml
+                        """
+                    }
+                    junit "ansible/playbooks/common/*/cukinia_common.xml"
+                }
+            }
+        }
     }
 
     post {
