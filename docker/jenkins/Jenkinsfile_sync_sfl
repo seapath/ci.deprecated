@@ -128,6 +128,25 @@ pipeline {
                 }
             }
         }
+
+	stage("Sync vm_manager") {
+            steps {
+                dir("vm_manager") {
+                    git branch: 'sfl/master',
+                    credentialsId: 'gerrit-credentials',
+                    url: "ssh://$p.GERRIT_USER@$p.GERRIT_URL/rte/votp/vm_manager"
+
+                    sshagent(credentials : ['gitlab-credentials']) {
+                        sh """
+                            git remote add secondary \
+                            "[git@$p.GITLAB_URL]:$p.GITLAB_USER/vm_manager.git"
+                            git fetch secondary sfl/master
+                            git push secondary sfl/master
+                        """
+                    }
+                }
+            }
+        }
     }
 
     post {

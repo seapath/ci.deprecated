@@ -17,7 +17,7 @@ def def_values = [GITLAB_URL: "10.132.156.199:2200",
 
 def p // Global variable to handle properties
 
-def project_list = ["meta-seapath", "yocto-bsp", "repo-manifest", "ansible"]
+def project_list = ["meta-seapath", "yocto-bsp", "repo-manifest", "ansible", "vm_manager"]
 
 pipeline {
     agent any
