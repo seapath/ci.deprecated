@@ -177,14 +177,14 @@ Note:
                             sh """
                                 cd ansible
                                 ansible-playbook -i inventories/sfl_ci.yaml \
-                                --extra-vars image_path="${IMAGES_DIR}/seapath-host-bios-test-image-votp.wic.gz" \
+                                --extra-vars image_path="${IMAGES_PATH}/seapath-host-bios-test-image-votp.wic.gz" \
                                 --limit "pxe_hypervisor*" \
                                 playbooks/ci_flash_disk.yaml
                             """
                             sh """
                                 cd ansible
                                 ansible-playbook -i inventories/sfl_ci.yaml \
-                                --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp.wic.gz" \
+                                --extra-vars image_path="${IMAGES_PATH}/seapath-monitor-bios-image-votp.wic.gz" \
                                 --limit "pxe_observer" \
                                 playbooks/ci_flash_disk.yaml
                             """
@@ -194,6 +194,7 @@ Note:
                             sh """
                                 cd ansible
                                 ansible-playbook -i inventories/sfl_ci.yaml \
+                                --extra-vars image_directory="${IMAGES_PATH}" \
                                 playbooks/ci_flash_disk.yaml
                             """
                         }
