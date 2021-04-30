@@ -55,7 +55,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'IMAGE_PATH',
+        string(name: 'IMAGES_DIR',
                defaultValue: '/var/jenkins_home/images/<user>',
                description: """Directory where built images are located. \
 Please create and use a subdirectory inside /var/jenkins_home/images with the \
@@ -115,14 +115,14 @@ Note:
                         def imgCheck = true
                         if (RUN_RT_TEST) {
                             imgs_tests.each { item ->
-                                if (!fileExists("${IMAGE_PATH}/${item}")) {
+                                if (!fileExists("${IMAGES_DIR}/${item}")) {
                                     echo "Could not find ${item}"
                                     imgCheck = false
                                 }
                             }
                         }else{
                             imgs.each { item ->
-                                if (!fileExists("${IMAGE_PATH}/${item}")) {
+                                if (!fileExists("${IMAGES_DIR}/${item}")) {
                                     echo "Could not find ${item}"
                                     imgCheck = false
                                 }
@@ -130,12 +130,12 @@ Note:
                         }
 
                         if (!imgCheck) {
-                            error "Could not find all images, please check ${IMAGE_PATH}"
+                            error "Could not find all images, please check ${IMAGES_DIR}"
                         }
                         echo "copying PXE images to root directory"
                         sh """
-                            cp ${IMAGE_PATH}/bzImage /var/jenkins_home/images/
-                            cp ${IMAGE_PATH}/seapath-flash-pxe-votp.cpio.gz /var/jenkins_home/images/
+                            cp ${IMAGES_DIR}/bzImage /var/jenkins_home/images/
+                            cp ${IMAGES_DIR}/seapath-flash-pxe-votp.cpio.gz /var/jenkins_home/images/
                         """
                     }
 
@@ -177,14 +177,14 @@ Note:
                             sh """
                                 cd ansible
                                 ansible-playbook -i inventories/sfl_ci.yaml \
-                                --extra-vars image_path="${IMAGES_PATH}/seapath-host-bios-test-image-votp.wic.gz" \
+                                --extra-vars image_path="${IMAGES_DIR}/seapath-host-bios-test-image-votp.wic.gz" \
                                 --limit "pxe_hypervisor*" \
                                 playbooks/ci_flash_disk.yaml
                             """
                             sh """
                                 cd ansible
                                 ansible-playbook -i inventories/sfl_ci.yaml \
-                                --extra-vars image_path="${IMAGES_PATH}/seapath-monitor-bios-image-votp.wic.gz" \
+                                --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp.wic.gz" \
                                 --limit "pxe_observer" \
                                 playbooks/ci_flash_disk.yaml
                             """
@@ -194,7 +194,7 @@ Note:
                             sh """
                                 cd ansible
                                 ansible-playbook -i inventories/sfl_ci.yaml \
-                                --extra-vars image_directory="${IMAGES_PATH}" \
+                                --extra-vars image_directory="${IMAGES_DIR}" \
                                 playbooks/ci_flash_disk.yaml
                             """
                         }
@@ -281,7 +281,7 @@ Note:
                             sh """
                                 cd ansible
                                 ansible-playbook -i inventories/sfl_ci.yaml \
-                                --extra-vars image_directory="${IMAGE_PATH}" \
+                                --extra-vars image_directory="${IMAGES_DIR}" \
                                 --extra-vars guest_image=seapath-guest-efi-test-image-votp.wic.qcow2 \
                                 playbooks/ci_deploy_vms.yaml
 
@@ -295,7 +295,7 @@ Note:
                             sh """
                                 cd ansible
                                 ansible-playbook -i inventories/sfl_ci.yaml \
-                                --extra-vars image_directory="${IMAGE_PATH}" \
+                                --extra-vars image_directory="${IMAGES_DIR}" \
                                 playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment
