@@ -282,7 +282,19 @@ Note:
             }
         }
 
-        stage("8. Deploy VM") {
+        stage("8. Prepare VM environment") {
+            steps {
+                script {
+                    sh """
+                        cd ansible
+                        ansible-playbook -i inventories/sfl_ci.yaml \
+                        playbooks/ci_setup_vms_environement.yaml
+                    """
+                }
+            }
+        }
+
+        stage("9. Deploy VM") {
             steps {
                 script {
                     if (params.RUN_RT_TEST) {
@@ -317,7 +329,7 @@ Note:
             }
         }
 
-        stage("9. Configure VM") {
+        stage("10. Configure VM") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -331,7 +343,7 @@ Note:
             }
         }
 
-        stage("10. Test VM") {
+        stage("11. Test VM") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
@@ -374,7 +386,20 @@ Note:
                 }
             }
         }
-        stage("11. Test Common 2nd call") {
+
+        stage("12. Stop VMs DHCP") {
+            steps {
+                script {
+                        sh """
+                            cd ansible
+                            ansible-playbook -i inventories/sfl_ci.yaml \
+                            playbooks/ci_stop_vms_dhcp.yaml
+                        """
+                }
+            }
+        }
+
+        stage("13. Test Common 2nd call") {
             steps {
                 script {
                     sshagent(credentials : ['cluster']) {
