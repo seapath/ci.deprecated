@@ -29,6 +29,7 @@ RUN python3 ./get-pip.py
 RUN pip install ansible==2.9
 RUN pip install netaddr
 RUN pip install docker
+RUN pip install six
 
 RUN usermod -aG docker jenkins
 
