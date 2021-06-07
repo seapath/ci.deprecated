@@ -379,6 +379,8 @@ Note:
                                 ).trim()
 
                         currentBuild.description = "Max latency: " + max_found.toString()
+                        archiveArtifacts artifacts: "${TMP_FILE}"
+                        archiveArtifacts artifacts: "ansible/playbooks/realtime/*/output"
                         if (max_found.toInteger() > MAX_LATENCY.toInteger()) {
                             error "Maximal latency reached"
                         }
