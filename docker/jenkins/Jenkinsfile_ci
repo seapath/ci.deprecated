@@ -14,16 +14,12 @@
  *
  * Requirements:
  * - Install plugins: SSH Agent, Blue Ocean, Junit, Pipeline Utility Steps and
- * Throttle Concurrent Builds
+ * Throttle Concurrent Builds.
  * - Set SSH key with name 'gitlab-credentials' and 'cluster'
  * - Configure Throttle Concurrent Builds according to README.md
+ * - Set properties file (by default '/var/jenkins_home/jenkins.properties')
  *****************************************************************************/
 
-// Parametrized properties. Default values can be overwritten by setting the
-// configuration file /var/jenkins_home/jenkins.properties
-def def_values = [GITLAB_URL: "10.132.156.199:2200",
-                  GITLAB_USER: "root",
-                  REPO_BRANCH: "sfl/master"]
 def p // Global variable to handle properties
 
 pipeline {
@@ -71,7 +67,10 @@ pipeline {
                 cleanWs()
                 script {
                     stage("1.1 Read Config File") {
-                        p = readProperties defaults: def_values, file: "${CONFIG_FILE}"
+                        if (!fileExists("${CONFIG_FILE}")) {
+                            error "Could not find configuration properties file: ${CONFIG_FILE}"
+                        }
+                        p = readProperties file: "${CONFIG_FILE}"
                     }
                     stage("1.2. Stop containers") {
                         sh """
@@ -105,12 +104,27 @@ pipeline {
                             """
                         }
                     }
-                    stage("1.5. Set SSH Key for Ansible") {
+                    stage("1.5. Get Ansible inventory") {
+                        sshagent(credentials : ['gitlab-credentials']) {
+                            // Credentials to access REPO_ANSIBLE_INVENTORY
+                            sh """
+                                if [ "$p.REPO_ANSIBLE_INVENTORIES" != "null" ] ; then
+                                    # Inventory from remote repository if specified
+                                    git clone -b sfl/master "$p.REPO_ANSIBLE_INVENTORIES" inventory
+                                    echo "inventory = \$(readlink -f inventory/$p.ANSIBLE_INVENTORY)" >> ansible/ansible.cfg
+                                else
+                                    # Absolute path otherwise
+                                    echo "inventory = $p.ANSIBLE_INVENTORY" >> ansible/ansible.cfg
+                                fi
+                            """
+                        }
+                    }
+                    stage("1.6. Set SSH Key for Ansible") {
                         sshagent(credentials : ['cluster']) {
                             sh "ssh-add -L > keys/ansible_public_ssh_key.pub"
                         }
                     }
-                    stage("1.6. Create Images Dir") {
+                    stage("1.7. Create Images Dir") {
                         sh "mkdir -p -v ${IMAGES_DIR}"
                     }
                 }
@@ -173,8 +187,7 @@ pipeline {
                     sshagent(credentials : ['cluster']) {
                         sh """
                             cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_prepare_machine.yaml
+                            ansible-playbook playbooks/ci_prepare_machine.yaml
                         """
                     }
                 }
@@ -188,14 +201,14 @@ pipeline {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                ansible-playbook \
                                 --extra-vars image_path="${IMAGES_DIR}/seapath-host-bios-test-image-votp.wic.gz" \
                                 --limit "pxe_hypervisor*" \
                                 playbooks/ci_flash_disk.yaml
                             """
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                ansible-playbook \
                                 --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp.wic.gz" \
                                 --limit "pxe_observer" \
                                 playbooks/ci_flash_disk.yaml
@@ -205,8 +218,7 @@ pipeline {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
-                                playbooks/ci_flash_disk.yaml
+                                ansible-playbook playbooks/ci_flash_disk.yaml
                             """
                         }
                     }
@@ -220,8 +232,7 @@ pipeline {
                     sshagent(credentials : ['cluster']) {
                         sh """
                             cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_configure_hosts.yaml
+                            ansible-playbook playbooks/ci_configure_hosts.yaml
                         """
                     }
                 }
@@ -235,8 +246,7 @@ pipeline {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
-                                playbooks/ci_common_tests.yaml
+                                ansible-playbook playbooks/ci_common_tests.yaml
                             """
                         }
                         junit "ansible/playbooks/common/*/cukinia_common.xml"
@@ -245,8 +255,7 @@ pipeline {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
-                                playbooks/ci_hypervisor_tests.yaml
+                                ansible-playbook playbooks/ci_hypervisor_tests.yaml
                             """
                         }
                         junit "ansible/playbooks/hypervisor/*/cukinia_hypervisor.xml"
@@ -255,8 +264,7 @@ pipeline {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
-                                playbooks/ci_ovs_tests.yaml
+                                ansible-playbook playbooks/ci_ovs_tests.yaml
                             """
                         }
                     }
@@ -270,8 +278,7 @@ pipeline {
                     sshagent(credentials : ['cluster']) {
                         sh """
                             cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_configure_cluster.yaml
+                            ansible-playbook playbooks/ci_configure_cluster.yaml
                         """
                     }
                 }
@@ -284,8 +291,7 @@ pipeline {
                     sshagent(credentials : ['cluster']) {
                         sh """
                             cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_cluster_tests.yaml
+                            ansible-playbook playbooks/ci_cluster_tests.yaml
                         """
                         junit "ansible/playbooks/cluster/cukinia_cluster.xml"
                     }
@@ -298,8 +304,7 @@ pipeline {
                 script {
                     sh """
                         cd ansible
-                        ansible-playbook -i inventories/sfl_ci.yaml \
-                        playbooks/ci_setup_vms_environement.yaml
+                        ansible-playbook playbooks/ci_setup_vms_environement.yaml
                     """
                 }
             }
@@ -312,26 +317,23 @@ pipeline {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
+                                ansible-playbook \
                                 --extra-vars image_directory="${IMAGES_DIR}" \
                                 --extra-vars guest_image=seapath-guest-efi-test-image-votp.wic.qcow2 \
                                 playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment
-                                ansible-playbook -i inventories/sfl_ci.yaml \
-                                playbooks/ci_test_vm_status.yaml
+                                ansible-playbook playbooks/ci_test_vm_status.yaml
                             """
                         }
                     }else{
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
-                                playbooks/ci_deploy_vms.yaml
+                                ansible-playbook playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment
-                                ansible-playbook -i inventories/sfl_ci.yaml \
-                                playbooks/ci_test_vm_status.yaml
+                                ansible-playbook playbooks/ci_test_vm_status.yaml
                             """
                         }
                     }
@@ -345,8 +347,7 @@ pipeline {
                     sshagent(credentials : ['cluster']) {
                         sh """
                             cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_configure_vm.yaml
+                            ansible-playbook playbooks/ci_configure_vm.yaml
                         """
                     }
                 }
@@ -359,8 +360,7 @@ pipeline {
                     sshagent(credentials : ['cluster']) {
                         sh """
                             cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_vm_tests.yaml
+                            ansible-playbook playbooks/ci_vm_tests.yaml
                         """
                     }
                     junit "ansible/playbooks/vm/*/cukinia_vm.xml"
@@ -369,8 +369,7 @@ pipeline {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook -i inventories/sfl_ci.yaml \
-                                playbooks/ci_realtime_tests.yaml
+                                ansible-playbook playbooks/ci_realtime_tests.yaml
                             """
                         }
                         junit "ansible/playbooks/realtime/*/cukinia_realtime.xml"
@@ -403,8 +402,7 @@ pipeline {
                 script {
                         sh """
                             cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_stop_vms_dhcp.yaml
+                            ansible-playbook playbooks/ci_stop_vms_dhcp.yaml
                         """
                 }
             }
@@ -416,8 +414,7 @@ pipeline {
                     sshagent(credentials : ['cluster']) {
                         sh """
                             cd ansible
-                            ansible-playbook -i inventories/sfl_ci.yaml \
-                            playbooks/ci_common_tests.yaml
+                            ansible-playbook playbooks/ci_common_tests.yaml
                         """
                     }
                     junit "ansible/playbooks/common/*/cukinia_common.xml"

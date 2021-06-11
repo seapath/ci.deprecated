@@ -10,15 +10,15 @@ images by using docker-compose.
 
 ## Environment requirements
 
-Please make sure `docker` and `docker-compose` packages are installed
-on the host machine.
+Please make sure `docker` and `docker-compose` packages are installed on
+the host machine.
 
 ## Deploying the CI
 
 ### Create docker-compose environment file
 
-We use a docker-compose environment file in our _docker-compose.yaml_ to configure
-all the environment-specific settings.
+We use a docker-compose environment file in our _docker-compose.yaml_ to
+configure all the environment-specific settings.
 
 To generate this file, you can use the script _docker/generate_env.sh_.
 
@@ -28,18 +28,17 @@ To generate this file, you can use the script _docker/generate_env.sh_.
 
 #### Yocto cache
 
-The script _docker/generate_env.sh_ also creates the folder where
-Yocto cache will be stored (_/var/jenkins_home/yocto_). If you ever
-need to update the cache you can store the sstate Yocto cache into
+The script _docker/generate_env.sh_ also creates the folder where Yocto
+cache will be stored (_/var/jenkins_home/yocto_). If you ever need to
+update the cache you can store the sstate Yocto cache into
 _/var/jenkins_home/yocto/sstate_.
-
 
 ### Build the images
 
 To build the docker images perform the following commands:
 
-All docker-compose command must be run in the _docker_ directory at the same
-directory level of the _docker-compose.yaml_ file.
+All docker-compose command must be run in the _docker_ directory at the
+same directory level of the _docker-compose.yaml_ file.
 
 ```
 docker-compose build
@@ -53,16 +52,17 @@ To deploy and start the CI perform the following command:
 docker-compose up -d
 ```
 
-If you remove the _-d_ parameter it will the command in foreground and you will
-have access to containers logs. You can stop it by pressing _CTRL+C_ keys.
+If you remove the _-d_ parameter it will the command in foreground and
+you will have access to containers logs. You can stop it by pressing
+_CTRL+C_ keys.
 
 You can later stop the CI with `docker-compose stop` and start it with
 `docker-compose start`.
 
 To undeploy the CI use `docker-compose down`.
 
-For more informations about the `docker-compose` command see the official
-documentation at https://docs.docker.com/compose/.
+For more informations about the `docker-compose` command see the
+official documentation at https://docs.docker.com/compose/.
 
 ### Jenkins configuration
 
@@ -70,13 +70,12 @@ Jenkins UI can be accessed from a navigator with `localhost:8080`. The
 initial password for the `admin` user can be found inside
 `/var/jenkins_home/secrets/initialAdminPassword`.
 
-Install plugins `SSH Agent`, `Pipeline`, `Pipeline Stage View`,
-`JUnit`, `Blue Ocean`, `Pipeline Utility Steps` and `Throttle
-Concurrent Builds`.
+Install plugins `SSH Agent`, `Pipeline`, `Pipeline Stage View`, `JUnit`,
+`Blue Ocean`, `Pipeline Utility Steps` and `Throttle Concurrent Builds`.
 
-Following configuration can be left with the default values by
-selecting `Skip and continue as admin`, `Instance configuration: Not
-now` and `Start using jenkins`.
+Following configuration can be left with the default values by selecting
+`Skip and continue as admin`, `Instance configuration: Not now` and
+`Start using jenkins`.
 
 ### SSH Credentials
 
@@ -97,10 +96,9 @@ Note: The `ID` for each key needs to be accordingly set to
 To prevent simultaneous access to the cluster machines from different
 Jenkins jobs, the plugin `Throttle Concurrent Builds` is used.
 
-Please, make sure it is installed. Then you can access its
-configuration from `Manage Jenkins > Configure System > Throttle
-Concurrent Builds` and set the following values under `Multi-project
-Throttle Categories`:
+Please, make sure it is installed. Then you can access its configuration
+from `Manage Jenkins > Configure System > Throttle Concurrent Builds`
+and set the following values under `Multi-project Throttle Categories`:
 
 * Category Name: cluster
 * Maximum Total Concurrent Builds: 1
@@ -123,8 +121,8 @@ To be able to use Jenkins CI Jobs, the following material is required:
 
 * 2 hypervisor machines
 
-Those machines must be 64 bits Intel architecture with a NIC DPDK compatible.
-Each hypervisor should have 2 distinct harddisks:
+Those machines must be 64 bits Intel architecture with a NIC DPDK
+compatible. Each hypervisor should have 2 distinct harddisks:
 
 * One disk for the system
 * One disk for Ceph
@@ -135,7 +133,8 @@ Each hypervisor should have 2 distinct harddisks:
 
 * 1 EG-PMS2-LAN programmable power supply
 
-This programmable power supply will be triggered by Jenkins to electrically restart the machines.
+This programmable power supply will be triggered by Jenkins to
+electrically restart the machines.
 
 Hypervisor and observer machines must be configured to:
 
@@ -158,10 +157,13 @@ The CI needs at least three networks to work:
 
 1. Configure the PXE
 
-```rte_ci.conf``` should be filled in with the following information:
+A configuration (_.conf_) file for the PXE's DHCP needs to be added on
+the _docker/pxe/pxe\_extra\_config\_ folder. It should be filled with
+the following information:
 
-The MAC address should be described as first argument following by its IP address.
-The IP addresses should be static or have fixed DHCP leasing.
+The MAC address should be described as first argument following by its
+IP address. The IP addresses should be static or have fixed DHCP
+leasing.
 
 ```
 # Programmable power supply
@@ -174,12 +176,25 @@ dhcp-host=??:??:??:??:??:??,???.???.???.???
 dhcp-host=??:??:??:??:??:??,???.???.???.???
 ```
 
-2. Adapt the Ansible inventory
+2. Jenkins configuration
 
-The Ansible inventory will be used by Ansible to configure each machine of the CI
-and trigger the electrical reboots.
+A Jenkins properties file is used to configure the CI (view
+`docker/jenkins/extra_config/*.properties)`. Please make sure that
+`/var/jenkins_home/jenkins.properties` exists. The file can be
+copy-pasted from `docker/jenkins/extra_config` and modified according to
+your setup.
 
-The inventories inventories/rte_ci.yaml should be modified with the Network configuration.
+3. Adapt the Ansible inventory
+
+The Ansible inventory will be used by Ansible to configure each machine
+of the CI and trigger the electrical reboots.
+
+This file can be accessed from a remote repository or placed on the
+local CI machine according to configuration from jenkins.properties
+file.
+
+If you need to create your own inventory you can use
+inventories/seapath.yaml as a template.
 
 ### Create jobs and import pipeline from SCM
 
@@ -213,12 +228,7 @@ Definition` scrollable menu. The following configuration must be set:
 You can save the job and reproduce the same process for each of the
 three.
 
-In order to apply the configuration of the Jenkinsfile_sync_sfl, its
-job must be run once. After that, the three jobs should be
-sequentially triggered for every new commit merged on Gerrit's
-sfl/master branch.
+In order to apply the configuration of the Jenkinsfile_sync_sfl, its job
+must be run once. After that, the three jobs should be sequentially
+triggered for every new commit merged on Gerrit's sfl/master branch.
 
-Default parameters for accessing Gerrit and GitLab are directly set on
-the Jenkinsfiles, if you ever need to change them, you can modify the
-values from `docker/jenkins/extra_config/rte.properties` and
-copy-paste it to `/var/jenkins_home/jenkins.properties`.
