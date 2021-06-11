@@ -113,7 +113,7 @@ Note:
                     stage("1.3. Check Images Dir") {
 
                         def imgCheck = true
-                        if (RUN_RT_TEST) {
+                        if (params.RUN_RT_TEST) {
                             imgs_tests.each { item ->
                                 if (!fileExists("${IMAGES_DIR}/${item}")) {
                                     echo "Could not find ${item}"
