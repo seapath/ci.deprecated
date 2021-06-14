@@ -440,7 +440,7 @@ pipeline {
                         docker stop ci_pxe
                     fi
                     if docker ps |grep -q ci_dhcp_vm ; then
-                        docker stop i_dhcp_vm
+                        docker stop ci_dhcp_vm
                     fi
                 """
             }
