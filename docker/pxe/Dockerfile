@@ -5,6 +5,7 @@ FROM alpine:3.13
 ARG DHCP_RANGE_BEGIN=192.168.111.50
 ARG DHCP_RANGE_END=192.168.111.100
 ARG DHCP_BIND_INTERFACE=eth0
+ARG TFTP_SERVER=192.168.111.1
 
 RUN apk --no-cache add dnsmasq syslinux
 RUN mkdir /tftpboot
@@ -14,6 +15,7 @@ RUN chown -R nobody:nogroup /tftpboot
 RUN mkdir /tftpboot/pxelinux.cfg
 COPY syslinux.cfg /tftpboot/pxelinux.cfg/default
 COPY dnsmasq.conf /etc/dnsmasq.conf
+RUN sed -i "s/{{ tftp server address }}/${TFTP_SERVER}/" /etc/dnsmasq.conf
 COPY pxe_extra_config/* /etc/dnsmasq.d/
 RUN echo "dhcp-range=${DHCP_RANGE_BEGIN},${DHCP_RANGE_END},48h" \
     > /etc/dnsmasq.more.conf
