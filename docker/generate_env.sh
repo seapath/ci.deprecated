@@ -17,11 +17,11 @@ docker_gid=$(cut -d: -f3 <(getent group docker))
 
 if [ ! -d /var/jenkins_home ] ; then
     sudo mkdir -p -v /var/jenkins_home
-    sudo chown -R 1000:1000 /var/jenkins_home
+    sudo chown 1000:1000 /var/jenkins_home
 fi
 
 if [ ! -d /var/jenkins_home/yocto ] ; then
-    sudo mkdir -p -v /var/jenkins_home/yocto
+    sudo mkdir -p -v /var/jenkins_home/yocto/{dl,sstate}
     sudo chown -R 1000:1000 /var/jenkins_home/yocto
 fi
 
