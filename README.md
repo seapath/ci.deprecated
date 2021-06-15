@@ -71,7 +71,8 @@ initial password for the `admin` user can be found inside
 `/var/jenkins_home/secrets/initialAdminPassword`.
 
 Install plugins `SSH Agent`, `Pipeline`, `Pipeline Stage View`, `JUnit`,
-`Blue Ocean`, `Pipeline Utility Steps` and `Throttle Concurrent Builds`.
+`Blue Ocean`, `Pipeline Utility Steps`, `Throttle Concurrent Builds` and
+`Workspace Cleanup`.
 
 Following configuration can be left with the default values by selecting
 `Skip and continue as admin`, `Instance configuration: Not now` and

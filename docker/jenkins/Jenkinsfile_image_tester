@@ -2,8 +2,8 @@
  * Jenkins pipeline that runs the CI for already built images.
  *
  * Requirements:
- * - Install plugins: SSH Agent, Blue Ocean, Junit, Pipeline Utility Steps and
- * Throttle Concurrent Builds
+ * - Install plugins: SSH Agent, Pipeline, Junit, Pipeline Utility
+ *   Steps, Throttle Concurrent Builds. and Workspace Cleanup
  * - Set SSH key with name 'gitlab-credentials' and 'cluster'
  * - Configure Throttle Concurrent Builds according to README.md
  * - Set properties file (by default '/var/jenkins_home/jenkins.properties')
