@@ -8,16 +8,17 @@
  * Requirements:
  * - SSH Agent Plugin
  * - Set SSH key with name 'gitlab-credentials'
+ * - Set properties file (by default '/var/jenkins_home/jenkins.properties')
  *****************************************************************************/
-
-// Parametrized properties. Default values can be overwritten by setting the
-// configuration file /var/jenkins_home/jenkins.properties
-def def_values = [GITLAB_URL: "10.132.156.199:2200",
-                  GITLAB_USER: "root"]
 
 def p // Global variable to handle properties
 
-def project_list = ["meta-seapath", "yocto-bsp", "repo-manifest", "ansible", "vm_manager"]
+def project_list = ["meta-seapath",
+                    "yocto-bsp",
+                    "repo-manifest",
+                    "ansible",
+                    "vm_manager",
+                    "votp-inventories"]
 
 pipeline {
     agent any
@@ -34,7 +35,10 @@ pipeline {
             steps {
                 cleanWs()
                 script {
-                    p = readProperties defaults: def_values, file: "${CONFIG_FILE}"
+                    if (!fileExists("${CONFIG_FILE}")) {
+                        error "Could not find configuration properties file: ${CONFIG_FILE}"
+                    }
+                    p = readProperties file: "${CONFIG_FILE}"
                 }
             }
         }

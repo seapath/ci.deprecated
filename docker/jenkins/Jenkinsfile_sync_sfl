@@ -9,14 +9,9 @@
  * Requirements:
  * - SSH Agent Plugin
  * - Set SSH credentials ('gerrit-credentials' and 'gitlab-credentials')
+ * - Set properties file (by default '/var/jenkins_home/jenkins.properties')
  *****************************************************************************/
 
-// Parametrized properties. Default values can be overwritten by setting the
-// configuration file /var/jenkins_home/jenkins.properties
-def def_values = [GERRIT_URL: "g1.sfl.team:29419",
-                  GERRIT_USER: "rteci",
-                  GITLAB_URL: "10.132.156.199:2200",
-                  GITLAB_USER: "root"]
 def p // Global variable to handle properties
 
 pipeline {
@@ -48,7 +43,10 @@ pipeline {
             steps {
                 cleanWs()
                 script {
-                    p = readProperties defaults: def_values, file: "${CONFIG_FILE}"
+                    if (!fileExists("${CONFIG_FILE}")) {
+                        error "Could not find configuration properties file: ${CONFIG_FILE}"
+                    }
+                    p = readProperties file: "${CONFIG_FILE}"
                 }
             }
         }
@@ -140,6 +138,25 @@ pipeline {
                         sh """
                             git remote add secondary \
                             "[git@$p.GITLAB_URL]:$p.GITLAB_USER/vm_manager.git"
+                            git fetch secondary sfl/master
+                            git push secondary sfl/master
+                        """
+                    }
+                }
+            }
+        }
+
+        stage("Sync votp-inventories") {
+            steps {
+                dir("votp-inventories") {
+                    git branch: 'sfl/master',
+                    credentialsId: 'gerrit-credentials',
+                    url: "ssh://$p.GERRIT_USER@$p.GERRIT_URL/rte/votp/votp-inventories"
+
+                    sshagent(credentials : ['gitlab-credentials']) {
+                        sh """
+                            git remote add secondary \
+                            "[git@$p.GITLAB_URL]:$p.GITLAB_USER/votp-inventories.git"
                             git fetch secondary sfl/master
                             git push secondary sfl/master
                         """
