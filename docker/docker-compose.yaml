@@ -20,5 +20,6 @@ services:
     ntp:
         image: cturra/ntp
         network_mode: bridge
+        restart: unless-stopped
         ports:
             - "123:123/udp"
