@@ -35,6 +35,10 @@ _/var/jenkins_home/yocto/sstate_.
 
 ### Build the images
 
+The docker-compose file permits building the docker images for the CI
+and also the hawkBit server described on section [Deploy Hawkbit
+server](#deploy-the-hawkbit-server).
+
 To build the docker images perform the following commands:
 
 All docker-compose command must be run in the _docker_ directory at the
@@ -233,3 +237,20 @@ In order to apply the configuration of the Jenkinsfile_sync_sfl, its job
 must be run once. After that, the three jobs should be sequentially
 triggered for every new commit merged on Gerrit's sfl/master branch.
 
+# Deploy the hawkBit server
+
+SWUpdate can interact with an hawkBit server to push updates on the
+device. This server is deployed on a docker container and can be can
+be launched by docker-compose as described on section [build the
+images](#-build-the-images).
+
+Once the server has been deployed it should be accessible from the
+http server on port 8081. In _System Config_ menu, enable "Allow
+targets to download artifact without security credentials", so that
+anonymous updates can be used.
+
+## Update the device
+
+hawkBit interface should display the upgradable devices. Once you
+perform an update the device will be rebooted and will notify hawkBit
+with the result (success or failure).

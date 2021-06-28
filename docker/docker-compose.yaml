@@ -23,3 +23,27 @@ services:
         restart: unless-stopped
         ports:
             - "123:123/udp"
+    rabbitmq:
+        image: "rabbitmq:3-management"
+        environment:
+            RABBITMQ_DEFAULT_VHOST: "/"
+        restart: unless-stopped
+    mysql:
+        image: "mysql:5.7"
+        environment:
+            MYSQL_DATABASE: "hawkbit"
+            MYSQL_USER: "test" # "root" user gives problems
+            MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+        restart: unless-stopped
+    hawkbit:
+        image: "hawkbit/hawkbit-update-server:latest-mysql"
+        environment:
+            - 'SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/hawkbit'
+            - 'SPRING_RABBITMQ_HOST=rabbitmq'
+            - 'SPRING_RABBITMQ_USERNAME=guest'
+            - 'SPRING_RABBITMQ_PASSWORD=guest'
+            - 'SPRING_DATASOURCE_USERNAME=root'
+            - 'HAWKBIT_SERVER_DDI_SECURITY_AUTHENTICATION_ANONYMOUS_ENABLED=true'
+        restart: unless-stopped
+        ports:
+            - "8081:8080"
