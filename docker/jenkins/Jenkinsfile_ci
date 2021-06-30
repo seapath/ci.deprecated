@@ -166,14 +166,14 @@ pipeline {
                         stage("2.4. Build Guest EFI Test") {
                             sh """
                                 cqfd -b guest_efi_test
-                                cp ${BUILD_DIR}/seapath-guest-efi-test-image-votp.wic.qcow2 ${IMAGES_DIR}
+                                cp ${BUILD_DIR}/seapath-guest-efi-test-image-votp-vm.wic.qcow2 ${IMAGES_DIR}
                             """
                         }
                     }else{
                         stage("2.4. Build Guest EFI") {
                             sh """
                                 cqfd -b guest_efi
-                                cp ${BUILD_DIR}/seapath-guest-efi-image-votp.wic.qcow2 ${IMAGES_DIR}
+                                cp ${BUILD_DIR}/seapath-guest-efi-image-votp-vm.wic.qcow2 ${IMAGES_DIR}
                             """
                         }
                     }
@@ -319,7 +319,7 @@ pipeline {
                                 cd ansible
                                 ansible-playbook \
                                 --extra-vars image_directory="${IMAGES_DIR}" \
-                                --extra-vars guest_image=seapath-guest-efi-test-image-votp.wic.qcow2 \
+                                --extra-vars guest_image=seapath-guest-efi-test-image-votp-vm.wic.qcow2 \
                                 playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment

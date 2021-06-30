@@ -17,7 +17,7 @@ def imgs = ["bzImage",
             "seapath-host-bios-image-votp.wic.gz",
             "seapath-monitor-bios-image-votp.wic.bmap",
             "seapath-monitor-bios-image-votp.wic.gz",
-            "seapath-guest-efi-image-votp.wic.qcow2"]
+            "seapath-guest-efi-image-votp-vm.wic.qcow2"]
 
 def imgs_tests = ["bzImage",
             "seapath-flash-pxe-votp.cpio.gz",
@@ -25,7 +25,7 @@ def imgs_tests = ["bzImage",
             "seapath-host-bios-test-image-votp.wic.gz",
             "seapath-monitor-bios-image-votp.wic.bmap",
             "seapath-monitor-bios-image-votp.wic.gz",
-            "seapath-guest-efi-test-image-votp.wic.qcow2"]
+            "seapath-guest-efi-test-image-votp-vm.wic.qcow2"]
 
 pipeline {
     agent any
@@ -65,8 +65,8 @@ following files:
 - seapath-host-bios-test-image-votp.wic.gz
 - seapath-monitor-bios-image-votp.wic.bmap
 - seapath-monitor-bios-image-votp.wic.gz
-- seapath-guest-efi-image-votp.wic.qcow2
-- seapath-guest-efi-test-image-votp.wic.qcow2
+- seapath-guest-efi-image-votp-vm.wic.qcow2
+- seapath-guest-efi-test-image-votp-vm.wic.qcow2
 
 Note:
 - images need to be built with the 'cluster' ansible SSH public key \
@@ -311,7 +311,7 @@ Note:
                                 cd ansible
                                 ansible-playbook \
                                 --extra-vars image_directory="${IMAGES_DIR}" \
-                                --extra-vars guest_image=seapath-guest-efi-test-image-votp.wic.qcow2 \
+                                --extra-vars guest_image=seapath-guest-efi-test-image-votp-vm.wic.qcow2 \
                                 playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment
