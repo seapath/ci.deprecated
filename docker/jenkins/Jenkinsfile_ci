@@ -55,7 +55,7 @@ pipeline {
         CQFD_EXTRA_RUN_ARGS = "-v ${YOCTO_CACHE_DIR}/dl:/mnt/dl -e DL_DIR=/mnt/dl \
         -v ${YOCTO_CACHE_DIR}/sstate:/mnt/sstate -e SSTATE_DIR=/mnt/sstate"
         IMAGES_DIR = "/var/jenkins_home/images"
-        BUILD_DIR = "build/tmp/deploy/images/votp"
+        BUILD_DIR = "build/tmp/deploy/images"
         CONFIG_FILE = "/var/jenkins_home/jenkins.properties"
         TMP_FILE=".all_latencies"
     }
@@ -138,42 +138,42 @@ pipeline {
                         stage("2.1. Build Host Bios Test") {
                             sh """
                                 cqfd -b host_bios_test
-                                cp ${BUILD_DIR}/seapath-host-bios-test-image-votp.wic.* ${IMAGES_DIR}
+                                cp ${BUILD_DIR}/votp/seapath-host-bios-test-image-votp.wic.* ${IMAGES_DIR}
                             """
                         }
                     }else{
                         stage("2.1. Build Host Bios") {
                             sh """
                                 cqfd -b host_bios
-                                cp ${BUILD_DIR}/seapath-host-bios-image-votp.wic.* ${IMAGES_DIR}
+                                cp ${BUILD_DIR}/votp/seapath-host-bios-image-votp.wic.* ${IMAGES_DIR}
                             """
                         }
                     }
                     stage("2.2. Build Observer BIOS") {
                         sh """
                             cqfd -b monitor_bios
-                            cp ${BUILD_DIR}/seapath-monitor-bios-image-votp.wic.* ${IMAGES_DIR}
+                            cp ${BUILD_DIR}/votp/seapath-monitor-bios-image-votp.wic.* ${IMAGES_DIR}
                         """
                     }
                     stage("2.3. Build PXE Flasher") {
                         sh """
                             cqfd -b flash_pxe
-                            cp ${BUILD_DIR}/seapath-flash-pxe-votp.cpio.gz ${IMAGES_DIR}
-                            cp ${BUILD_DIR}/bzImage ${IMAGES_DIR}
+                            cp ${BUILD_DIR}/votp/seapath-flash-pxe-votp.cpio.gz ${IMAGES_DIR}
+                            cp ${BUILD_DIR}/votp/bzImage ${IMAGES_DIR}
                         """
                     }
                     if (params.RUN_RT_TEST) {
                         stage("2.4. Build Guest EFI Test") {
                             sh """
                                 cqfd -b guest_efi_test
-                                cp ${BUILD_DIR}/seapath-guest-efi-test-image-votp-vm.wic.qcow2 ${IMAGES_DIR}
+                                cp ${BUILD_DIR}/votp-vm/seapath-guest-efi-test-image-votp-vm.wic.qcow2 ${IMAGES_DIR}
                             """
                         }
                     }else{
                         stage("2.4. Build Guest EFI") {
                             sh """
                                 cqfd -b guest_efi
-                                cp ${BUILD_DIR}/seapath-guest-efi-image-votp-vm.wic.qcow2 ${IMAGES_DIR}
+                                cp ${BUILD_DIR}/votp-vm/seapath-guest-efi-image-votp-vm.wic.qcow2 ${IMAGES_DIR}
                             """
                         }
                     }
