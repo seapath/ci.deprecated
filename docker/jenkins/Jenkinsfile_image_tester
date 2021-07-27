@@ -15,16 +15,16 @@ def imgs = ["bzImage",
             "seapath-flash-pxe-votp.cpio.gz",
             "seapath-host-bios-image-votp.wic.bmap",
             "seapath-host-bios-image-votp.wic.gz",
-            "seapath-monitor-bios-image-votp.wic.bmap",
-            "seapath-monitor-bios-image-votp.wic.gz",
+            "seapath-monitor-bios-image-votp-monitor.wic.bmap",
+            "seapath-monitor-bios-image-votp-monitor.wic.gz",
             "seapath-guest-efi-image-votp-vm.wic.qcow2"]
 
 def imgs_tests = ["bzImage",
             "seapath-flash-pxe-votp.cpio.gz",
             "seapath-host-bios-test-image-votp.wic.bmap",
             "seapath-host-bios-test-image-votp.wic.gz",
-            "seapath-monitor-bios-image-votp.wic.bmap",
-            "seapath-monitor-bios-image-votp.wic.gz",
+            "seapath-monitor-bios-image-votp-monitor.wic.bmap",
+            "seapath-monitor-bios-image-votp-monitor.wic.gz",
             "seapath-guest-efi-test-image-votp-vm.wic.qcow2"]
 
 pipeline {
@@ -63,8 +63,8 @@ following files:
 - seapath-host-bios-image-votp.wic.gz
 - seapath-host-bios-test-image-votp.wic.bmap
 - seapath-host-bios-test-image-votp.wic.gz
-- seapath-monitor-bios-image-votp.wic.bmap
-- seapath-monitor-bios-image-votp.wic.gz
+- seapath-monitor-bios-image-votp-monitor.wic.bmap
+- seapath-monitor-bios-image-votp-monitor.wic.gz
 - seapath-guest-efi-image-votp-vm.wic.qcow2
 - seapath-guest-efi-test-image-votp-vm.wic.qcow2
 
@@ -199,7 +199,7 @@ Note:
                             sh """
                                 cd ansible
                                 ansible-playbook \
-                                --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp.wic.gz" \
+                                --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp-monitor.wic.gz" \
                                 --limit "pxe_observer" \
                                 playbooks/ci_flash_disk.yaml
                             """

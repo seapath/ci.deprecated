@@ -152,7 +152,7 @@ pipeline {
                     stage("2.2. Build Observer BIOS") {
                         sh """
                             cqfd -b monitor_bios
-                            cp ${BUILD_DIR}/votp/seapath-monitor-bios-image-votp.wic.* ${IMAGES_DIR}
+                            cp ${BUILD_DIR}/votp-monitor/seapath-monitor-bios-image-votp-monitor.wic.* ${IMAGES_DIR}
                         """
                     }
                     stage("2.3. Build PXE Flasher") {
@@ -209,7 +209,7 @@ pipeline {
                             sh """
                                 cd ansible
                                 ansible-playbook \
-                                --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp.wic.gz" \
+                                --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp-monitor.wic.gz" \
                                 --limit "pxe_observer" \
                                 playbooks/ci_flash_disk.yaml
                             """
