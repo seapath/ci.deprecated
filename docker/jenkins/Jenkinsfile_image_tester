@@ -27,6 +27,14 @@ def imgs_tests = ["bzImage",
             "seapath-monitor-bios-image-votp-monitor.wic.gz",
             "seapath-guest-efi-test-image-votp-vm.wic.qcow2"]
 
+def imgs_noiommu = ["bzImage",
+            "seapath-flash-pxe-votp.cpio.gz",
+            "seapath-monitor-bios-image-votp-monitor.wic.bmap",
+            "seapath-monitor-bios-image-votp-monitor.wic.gz",
+            "seapath-host-bios-no-iommu-image-votp-no-iommu.wic.bmap",
+            "seapath-host-bios-no-iommu-image-votp-no-iommu.wic.gz"]
+
+
 pipeline {
     agent any
 
@@ -67,21 +75,44 @@ following files:
 - seapath-monitor-bios-image-votp-monitor.wic.gz
 - seapath-guest-efi-image-votp-vm.wic.qcow2
 - seapath-guest-efi-test-image-votp-vm.wic.qcow2
+- seapath-host-bios-no-iommu-image-votp-no-iommu.wic.bmap
+- seapath-host-bios-no-iommu-image-votp-no-iommu.wic.gz
 
 Note:
 - images need to be built with the 'cluster' ansible SSH public key \
 (https://r1.sfl.team/attachments/3416).
-- tests images are required only for if RUN_RT_TEST is set
+- tests images are required only in ci_rt_test and no IOMMU only in custom
                """)
-        booleanParam(
-            name: 'RUN_RT_TEST',
-            defaultValue: false,
-            description: 'Run real time tests (Warning: long and invasive tests)'
-            )
         string(
             name: 'MAX_LATENCY',
             defaultValue: '200',
             description: 'Maximal latency to reach (us)'
+            )
+
+        choice(
+            name: 'TYPE',
+            choices: ['ci', 'ci_rt_test', 'custom'],
+            description: '''Select the pipeline type:
+ - ci: pipeline with CI test and VMs
+ - ci_rt_test: like ci with real time tests (Warning: long and invasive tests)
+ - custom: Generate a custom environment using a custom inventories'''
+        )
+        string (
+            name: 'custom_inventories',
+            description: '''Custom inventories list (comma separated).
+Work only if TYPE is custom.
+'''
+        )
+        string (
+            name: 'VMs_directory',
+            description: '''Change the directory where the VMs are stored
+Work only if TYPE is custom.
+'''
+        )
+        booleanParam(
+            name: 'NO_IOMMU',
+            defaultValue: false,
+            description: 'If custom is set, use no IOMMU images'
             )
     }
 
@@ -97,6 +128,18 @@ Note:
                             error "Could not find configuration properties file: ${CONFIG_FILE}"
                         }
                         p = readProperties file: "${CONFIG_FILE}"
+                        if (params.TYPE == 'custom') {
+                            if (!params.custom_inventories)
+                            {
+                                error "Error custom_inventories must be set if TYPE is custom"
+                            }
+                            env.ANSIBLE_INVENTORY = env.custom_inventories
+                        } else {
+                            env.ANSIBLE_INVENTORY = env.WORKSPACE + \
+                                "../inventory/" + \
+                                p.CI + \
+                                "_ci.yaml"
+                        }
                     }
 
                     stage("1.2. Stop containers") {
@@ -113,14 +156,21 @@ Note:
                     stage("1.3. Check Images Dir") {
 
                         def imgCheck = true
-                        if (params.RUN_RT_TEST) {
+                        if (params.TYPE == "ci_rt_test") {
                             imgs_tests.each { item ->
                                 if (!fileExists("${IMAGES_DIR}/${item}")) {
                                     echo "Could not find ${item}"
                                     imgCheck = false
                                 }
                             }
-                        }else{
+                        } else if (params.TYPE == "custom" && params.NO_IOMMU) {
+                            imgs_noiommu.each { item ->
+                                if (!fileExists("${IMAGES_DIR}/${item}")) {
+                                    echo "Could not find ${item}"
+                                    imgCheck = false
+                                }
+                            }
+                        } else {
                             imgs.each { item ->
                                 if (!fileExists("${IMAGES_DIR}/${item}")) {
                                     echo "Could not find ${item}"
@@ -146,7 +196,6 @@ Note:
                                 "[git@$p.GITLAB_URL]:$p.GITLAB_USER/ansible.git"
                                 cd ansible
                                 ./prepare.sh
-                                echo "host_key_checking = False" >> ansible.cfg
                                 ansible localhost -m ping
                             """
                         }
@@ -156,13 +205,10 @@ Note:
                         sshagent(credentials : ['gitlab-credentials']) {
                             // Credentials to access REPO_ANSIBLE_INVENTORY
                             sh """
+                                # Inventory from remote repository if specified
                                 if [ "$p.REPO_ANSIBLE_INVENTORIES" != "null" ] ; then
                                     # Inventory from remote repository if specified
                                     git clone -b sfl/master "$p.REPO_ANSIBLE_INVENTORIES" inventory
-                                    echo "inventory = \$(readlink -f inventory/$p.ANSIBLE_INVENTORY)" >> ansible/ansible.cfg
-                                else
-                                    # Absolute path otherwise
-                                    echo "inventory = $p.ANSIBLE_INVENTORY" >> ansible/ansible.cfg
                                 fi
                             """
                         }
@@ -187,7 +233,7 @@ Note:
         stage ("3. Flash Images") {
             steps {
                 script {
-                    if (params.RUN_RT_TEST) {
+                    if (params.TYPE == "ci_rt_test") {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
@@ -252,12 +298,14 @@ Note:
                         }
                         junit "ansible/playbooks/hypervisor/*/cukinia_hypervisor.xml"
                     }
-                    stage("6.3. Test openvswitch") {
-                        sshagent(credentials : ['cluster']) {
-                            sh """
-                                cd ansible
-                                ansible-playbook playbooks/ci_ovs_tests.yaml
-                            """
+                    if (params.TYPE != "custom") {
+                        stage("5.3. Test openvswitch") {
+                            sshagent(credentials : ['cluster']) {
+                                sh """
+                                    cd ansible
+                                    ansible-playbook playbooks/ci_ovs_tests.yaml
+                                """
+                            }
                         }
                     }
                 }
@@ -294,10 +342,12 @@ Note:
         stage("8. Prepare VM environment") {
             steps {
                 script {
-                    sh """
-                        cd ansible
-                        ansible-playbook playbooks/ci_setup_vms_environement.yaml
-                    """
+                    if (params.TYPE != "custom") {
+                        sh """
+                            cd ansible
+                            ansible-playbook playbooks/ci_setup_vms_environement.yaml
+                        """
+                    }
                 }
             }
         }
@@ -305,7 +355,7 @@ Note:
         stage("9. Deploy VM") {
             steps {
                 script {
-                    if (params.RUN_RT_TEST) {
+                    if (params.TYPE == "ci_rt_test") {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
@@ -315,10 +365,31 @@ Note:
                                 playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment
-                                ansible-playbook playbooks/ci_test_vm_status.yaml
+                                ansible-playbook playbooks/ci_rt_test_vm_status.yaml
                             """
                         }
-                    }else{
+                    } else if (params.TYPE == "custom") {
+                        sshagent(credentials : ['cluster']) {
+                            if (params.VMs_directory)
+                            {
+                                sh """
+                                    cd ansible
+                                    ansible-playbook \
+                                    playbooks/cluster_setup_deploy_vms.yaml \
+                                    --extra-vars vms_disks_directory=${VMs_directory}/disks \
+                                    --extra-vars vms_disks_directory=${vms_config_directory}/configs
+                                """
+                            }
+                            else
+                            {
+                                sh """
+                                    cd ansible
+                                    ansible-playbook \
+                                    playbooks/cluster_setup_deploy_vms.yaml
+                                """
+                            }
+                       }
+                    } else {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
@@ -338,11 +409,13 @@ Note:
         stage("10. Configure VM") {
             steps {
                 script {
-                    sshagent(credentials : ['cluster']) {
-                        sh """
-                            cd ansible
-                            ansible-playbook playbooks/ci_configure_vm.yaml
-                        """
+                    if (params.TYPE != "custom") {
+                         sshagent(credentials : ['cluster']) {
+                            sh """
+                                cd ansible
+                                ansible-playbook playbooks/ci_configure_vm.yaml
+                            """
+                        }
                     }
                 }
             }
@@ -351,42 +424,51 @@ Note:
         stage("11. Test VM") {
             steps {
                 script {
-                    sshagent(credentials : ['cluster']) {
-                        sh """
-                            cd ansible
-                            ansible-playbook playbooks/ci_vm_tests.yaml
-                        """
-                    }
-                    junit "ansible/playbooks/vm/*/cukinia_vm.xml"
-
-                    if (params.RUN_RT_TEST) {
+                    if (params.TYPE != "custom") {
                         sshagent(credentials : ['cluster']) {
                             sh """
                                 cd ansible
-                                ansible-playbook playbooks/ci_realtime_tests.yaml
+                                ansible-playbook playbooks/ci_vm_tests.yaml
                             """
                         }
-                        junit "ansible/playbooks/realtime/*/cukinia_realtime.xml"
+                        junit "ansible/playbooks/vm/*/cukinia_vm.xml"
 
-                        max_found = sh(
-                            script: """
-                                [ -f \$TMP_FILE ] && rm \$TMP_FILE && touch \$TMP_FILE
-                                base_dir="ansible/playbooks/realtime"
-                                for file in `find \$base_dir -name output`; do
-                                    max=`grep "Max Latencies" \$file \
-                                        | tr " " "\n" | sort -n | tail -1 | sed s/^0*//)`
-                                    echo \$max >> \$TMP_FILE
-                                done
-                                echo `sort -n -r \$TMP_FILE | head -n 1`
-                                """, returnStdout: true
-                                ).trim()
+                        if (params.TYPE == "ci_rt_test") {
+                            sshagent(credentials : ['cluster']) {
+                                sh """
+                                    cd ansible
+                                    ansible-playbook playbooks/ci_realtime_tests.yaml
+                                """
+                            }
+                            junit "ansible/playbooks/realtime/*/cukinia_realtime.xml"
 
-                        currentBuild.description = "Max latency: " + max_found.toString()
-                        archiveArtifacts artifacts: "${TMP_FILE}"
-                        archiveArtifacts artifacts: "ansible/playbooks/realtime/*/output"
-                        if (max_found.toInteger() > MAX_LATENCY.toInteger()) {
-                            error "Maximal latency reached"
+                            max_found = sh(
+                                script: """
+                                    [ -f \$TMP_FILE ] && rm \$TMP_FILE && touch \$TMP_FILE
+                                    base_dir="ansible/playbooks/realtime"
+                                    for file in `find \$base_dir -name output`; do
+                                        max=`grep "Max Latencies" \$file \
+                                            | tr " " "\n" | sort -n | tail -1 | sed s/^0*//)`
+                                        echo \$max >> \$TMP_FILE
+                                    done
+                                    echo `sort -n -r \$TMP_FILE | head -n 1`
+                                    """, returnStdout: true
+                                    ).trim()
+
+                            currentBuild.description = "Max latency: " + max_found.toString()
+                            archiveArtifacts artifacts: "${TMP_FILE}"
+                            archiveArtifacts artifacts: "ansible/playbooks/realtime/*/output"
+                            if (max_found.toInteger() > MAX_LATENCY.toInteger()) {
+                                error "Maximal latency reached"
+                            }
                         }
+                    }
+                    sshagent(credentials : ['VMs']) {
+                        sh """
+                            cd ansible
+                            ansible-playbook playbooks/ci_vms_custom_tests.yaml
+                        """
+                        junit "ansible/playbooks/vm_custom/*/cukinia_vms_custom_tests.xml"
                     }
                 }
             }
@@ -395,10 +477,12 @@ Note:
         stage("12. Stop VMs DHCP") {
             steps {
                 script {
+                    if (params.TYPE != "custom") {
                         sh """
                             cd ansible
                             ansible-playbook playbooks/ci_stop_vms_dhcp.yaml
                         """
+                    }
                 }
             }
         }
