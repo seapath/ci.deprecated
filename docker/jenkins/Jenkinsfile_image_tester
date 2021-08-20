@@ -46,7 +46,9 @@ pipeline {
             throttleEnabled: true,
             throttleOption: 'category',
             maxConcurrentPerNode: 1,
-            maxConcurrentTotal: 1)
+            maxConcurrentTotal: 1),
+        buildDiscarder (
+            logRotator(artifactNumToKeepStr: '20', numToKeepStr: '20'))
     }
 
     // TODO: Add gitlab server fingerprints to known_hosts instead

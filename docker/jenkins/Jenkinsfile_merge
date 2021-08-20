@@ -23,6 +23,12 @@ def project_list = ["meta-seapath",
 pipeline {
     agent any
 
+    options {
+        buildDiscarder (
+            logRotator(artifactNumToKeepStr: '20', numToKeepStr: '20'))
+    }
+
+
     // TODO: Add gerrit and gitlab server fingerprints to known_hosts instead
     environment {
         GIT_SSH_COMMAND = "ssh -o StrictHostKeyChecking=no"
