@@ -136,7 +136,7 @@ Work only if TYPE is custom.
                             env.ANSIBLE_INVENTORY = env.custom_inventories
                         } else {
                             env.ANSIBLE_INVENTORY = env.WORKSPACE + \
-                                "../inventory/" + \
+                                "/inventory/" + \
                                 p.CI + \
                                 "_ci.yaml"
                         }
@@ -365,7 +365,7 @@ Work only if TYPE is custom.
                                 playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment
-                                ansible-playbook playbooks/ci_rt_test_vm_status.yaml
+                                ansible-playbook playbooks/ci_test_vm_status.yaml
                             """
                         }
                     } else if (params.TYPE == "custom") {
@@ -466,7 +466,7 @@ Work only if TYPE is custom.
                     sshagent(credentials : ['VMs']) {
                         sh """
                             cd ansible
-                            ansible-playbook playbooks/ci_vms_custom_tests.yaml
+                            ansible-playbook playbooks/ci_custom_vms_tests.yaml
                         """
                         junit "ansible/playbooks/vm_custom/*/cukinia_vms_custom_tests.xml"
                     }
@@ -496,7 +496,9 @@ Work only if TYPE is custom.
                             ansible-playbook playbooks/ci_common_tests.yaml
                         """
                     }
-                    junit "ansible/playbooks/common/*/cukinia_common.xml"
+                    if(fileExists("vm_custom")) {
+                        junit "ansible/playbooks/vm_custom/*/cukinia_vms_custom_tests.xml"
+                    }
                 }
             }
         }
