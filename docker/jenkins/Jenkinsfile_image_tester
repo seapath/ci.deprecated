@@ -11,29 +11,30 @@
 
 def p // Global variable to handle properties
 
-def imgs = ["bzImage",
-            "seapath-flash-pxe-votp.cpio.gz",
-            "seapath-host-bios-image-votp.wic.bmap",
-            "seapath-host-bios-image-votp.wic.gz",
-            "seapath-monitor-bios-image-votp-monitor.wic.bmap",
-            "seapath-monitor-bios-image-votp-monitor.wic.gz",
-            "seapath-guest-efi-image-votp-vm.wic.qcow2"]
+def imgs_common = [
+    "bzImage",
+    "seapath-flash-pxe-votp.cpio.gz",
+    "seapath-monitor-bios-image-votp-monitor.wic.bmap",
+    "seapath-monitor-bios-image-votp-monitor.wic.gz"]
 
-def imgs_tests = ["bzImage",
-            "seapath-flash-pxe-votp.cpio.gz",
-            "seapath-host-bios-test-image-votp.wic.bmap",
-            "seapath-host-bios-test-image-votp.wic.gz",
-            "seapath-monitor-bios-image-votp-monitor.wic.bmap",
-            "seapath-monitor-bios-image-votp-monitor.wic.gz",
-            "seapath-guest-efi-test-image-votp-vm.wic.qcow2"]
+def imgs_regular = [
+    "seapath-host-bios-image-votp.wic.bmap",
+    "seapath-host-bios-image-votp.wic.gz"]
 
-def imgs_noiommu = ["bzImage",
-            "seapath-flash-pxe-votp.cpio.gz",
-            "seapath-monitor-bios-image-votp-monitor.wic.bmap",
-            "seapath-monitor-bios-image-votp-monitor.wic.gz",
-            "seapath-host-bios-no-iommu-image-votp-no-iommu.wic.bmap",
-            "seapath-host-bios-no-iommu-image-votp-no-iommu.wic.gz"]
+def imgs_tests = [
+    "seapath-host-bios-test-image-votp.wic.bmap",
+    "seapath-host-bios-test-image-votp.wic.gz"]
 
+def imgs_noiommu = [
+    "seapath-host-bios-no-iommu-image-votp-no-iommu.wic.bmap",
+    "seapath-host-bios-no-iommu-image-votp-no-iommu.wic.gz"]
+
+def imgs_tests_noiommu = [
+    "seapath-host-bios-test-no-iommu-image-votp-no-iommu.wic.bmap",
+    "seapath-host-bios-test-no-iommu-image-votp-no-iommu.wic.gz"]
+
+def img_guest = ["seapath-guest-efi-image-votp-vm.wic.qcow2"]
+def img_guest_test = ["seapath-guest-efi-test-image-votp-vm.wic.qcow2"]
 
 pipeline {
     agent any
@@ -139,6 +140,11 @@ Work only if TYPE is custom.
                                 "/inventory/" + \
                                 p.CI + \
                                 "_ci.yaml"
+                            if (params.NO_IOMMU) {
+                                env.ANSIBLE_INVENTORY += "," + \
+                                    env.WORKSPACE + \
+                                    "/inventory/ovs/no_dpdk.yaml"
+                            }
                         }
                     }
 
@@ -156,30 +162,29 @@ Work only if TYPE is custom.
                     stage("1.3. Check Images Dir") {
 
                         def imgCheck = true
+                        def imgs = imgs_common
                         if (params.TYPE == "ci_rt_test") {
-                            imgs_tests.each { item ->
-                                if (!fileExists("${IMAGES_DIR}/${item}")) {
-                                    echo "Could not find ${item}"
-                                    imgCheck = false
-                                }
+                            if (params.NO_IOMMU) {
+                                imgs += imgs_tests_noiommu
+                            } else {
+                                imgs += imgs_tests
                             }
-                        } else if (params.TYPE == "custom" && params.NO_IOMMU) {
-                            imgs_noiommu.each { item ->
-                                if (!fileExists("${IMAGES_DIR}/${item}")) {
-                                    echo "Could not find ${item}"
-                                    imgCheck = false
-                                }
-                            }
+                            imgs += img_guest_test
                         } else {
-                            imgs.each { item ->
-                                if (!fileExists("${IMAGES_DIR}/${item}")) {
-                                    echo "Could not find ${item}"
-                                    imgCheck = false
-                                }
+                             if (params.NO_IOMMU) {
+                                imgs += imgs_noiommu
+                             } else {
+                                imgs += imgs_regular
+                             }
+                             imgs += img_guest
+                        }
+                        imgs.each { item ->
+                            if (!fileExists("${IMAGES_DIR}/${item}")) {
+                                echo "Could not find ${item}"
+                                imgCheck = false
                             }
                         }
-
-                        if (!imgCheck) {
+                         if (!imgCheck) {
                             error "Could not find all images, please check ${IMAGES_DIR}"
                         }
                         echo "copying PXE images to root directory"
@@ -235,13 +240,23 @@ Work only if TYPE is custom.
                 script {
                     if (params.TYPE == "ci_rt_test") {
                         sshagent(credentials : ['cluster']) {
-                            sh """
-                                cd ansible
-                                ansible-playbook \
-                                --extra-vars image_path="${IMAGES_DIR}/seapath-host-bios-test-image-votp.wic.gz" \
-                                --limit "pxe_hypervisor*" \
-                                playbooks/ci_flash_disk.yaml
-                            """
+                            if (params.NO_IOMMU) {
+                                sh """
+                                    cd ansible
+                                    ansible-playbook \
+                                    --extra-vars image_path="${IMAGES_DIR}/seapath-host-bios-test-no-iommu-image-votp-no-iommu.wic.gz" \
+                                    --limit "pxe_hypervisor*" \
+                                    playbooks/ci_flash_disk.yaml
+                                """
+                            } else {
+                                sh """
+                                    cd ansible
+                                    ansible-playbook \
+                                    --extra-vars image_path="${IMAGES_DIR}/seapath-host-bios-test-image-votp.wic.gz" \
+                                    --limit "pxe_hypervisor*" \
+                                    playbooks/ci_flash_disk.yaml
+                                """
+                            }
                             sh """
                                 cd ansible
                                 ansible-playbook \
@@ -252,12 +267,26 @@ Work only if TYPE is custom.
                         }
                     }else{
                         sshagent(credentials : ['cluster']) {
-                            sh """
-                                cd ansible
-                                ansible-playbook \
-                                --extra-vars image_directory="${IMAGES_DIR}" \
-                                playbooks/ci_flash_disk.yaml
-                            """
+                            if (params.NO_IOMMU) {
+                                sh """
+                                    cd ansible
+                                    ansible-playbook \
+                                    --extra-vars image_path="${IMAGES_DIR}/seapath-host-bios-no-iommu-image-votp-no-iommu.wic.gz" \
+                                    --limit "pxe_hypervisor*" \
+                                    playbooks/ci_flash_disk.yaml
+                                    ansible-playbook \
+                                    --extra-vars image_path="${IMAGES_DIR}/seapath-monitor-bios-image-votp-monitor.wic.gz" \
+                                    --limit "pxe_observer" \
+                                    playbooks/ci_flash_disk.yaml
+                                """
+                            } else {
+                                sh """
+                                    cd ansible
+                                    ansible-playbook \
+                                    --extra-vars image_directory="${IMAGES_DIR}" \
+                                    playbooks/ci_flash_disk.yaml
+                                """
+                            }
                         }
                     }
                 }
@@ -355,6 +384,13 @@ Work only if TYPE is custom.
         stage("9. Deploy VM") {
             steps {
                 script {
+                    if (params.NO_IOMMU) {
+                        env.guest_template = env.WORKSPACE + \
+                            "/ansible/templates/vm/votp_vm_rt_isolated.xml.j2"
+                    } else {
+                        env.guest_template = env.WORKSPACE + \
+                            "/ansible/templates/vm/votp_vm_dpdk_isolated.xml.j2"
+                    }
                     if (params.TYPE == "ci_rt_test") {
                         sshagent(credentials : ['cluster']) {
                             sh """
@@ -362,6 +398,7 @@ Work only if TYPE is custom.
                                 ansible-playbook \
                                 --extra-vars image_directory="${IMAGES_DIR}" \
                                 --extra-vars guest_image=seapath-guest-efi-test-image-votp-vm.wic.qcow2 \
+                                --extra-vars vm_config="${guest_template}" \
                                 playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment
@@ -395,6 +432,7 @@ Work only if TYPE is custom.
                                 cd ansible
                                 ansible-playbook \
                                 --extra-vars image_directory="${IMAGES_DIR}" \
+                                --extra-vars vm_config="${guest_template}" \
                                 playbooks/ci_deploy_vms.yaml
 
                                 # Verify correct deployment
@@ -468,7 +506,9 @@ Work only if TYPE is custom.
                             cd ansible
                             ansible-playbook playbooks/ci_custom_vms_tests.yaml
                         """
-                        junit "ansible/playbooks/vm_custom/*/cukinia_vms_custom_tests.xml"
+                        if(fileExists("vm_custom")) {
+                            junit "ansible/playbooks/vm_custom/*/cukinia_vms_custom_tests.xml"
+                        }
                     }
                 }
             }
@@ -495,9 +535,6 @@ Work only if TYPE is custom.
                             cd ansible
                             ansible-playbook playbooks/ci_common_tests.yaml
                         """
-                    }
-                    if(fileExists("vm_custom")) {
-                        junit "ansible/playbooks/vm_custom/*/cukinia_vms_custom_tests.xml"
                     }
                 }
             }
