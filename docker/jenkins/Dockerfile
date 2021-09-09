@@ -22,7 +22,8 @@ RUN apt-get update && \
         git \
         make \
         pkg-config \
-        bash-completion
+        bash-completion \
+        iputils-ping
 
 ADD https://bootstrap.pypa.io/get-pip.py get-pip.py
 RUN python3 ./get-pip.py
