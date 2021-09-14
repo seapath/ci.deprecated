@@ -506,7 +506,7 @@ Work only if TYPE is custom.
                             cd ansible
                             ansible-playbook playbooks/ci_custom_vms_tests.yaml
                         """
-                        if(fileExists("vm_custom")) {
+                        if(fileExists("ansible/playbooks/vm_custom")) {
                             junit "ansible/playbooks/vm_custom/*/cukinia_vms_custom_tests.xml"
                         }
                     }
