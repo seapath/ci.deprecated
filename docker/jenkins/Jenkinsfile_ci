@@ -60,7 +60,7 @@ Work only if TYPE is custom.
             throttleEnabled: true,
             throttleOption: 'category',
             maxConcurrentPerNode: 1,
-            maxConcurrentTotal: 1),
+            maxConcurrentTotal: 1)
         buildDiscarder (
             logRotator(artifactNumToKeepStr: '20', numToKeepStr: '20'))
     }
