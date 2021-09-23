@@ -1,7 +1,7 @@
 # Copyright (C) 2021, RTE (http://www.rte-france.com)
 # SPDX-License-Identifier: Apache-2.0
 
-FROM jenkins/jenkins
+FROM jenkins/jenkins:2.313
 
 # Needs to be set to docker group
 ARG dockergid=134
