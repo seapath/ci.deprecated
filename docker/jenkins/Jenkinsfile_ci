@@ -34,6 +34,11 @@ pipeline {
  - ci_rt_test: like ci with real time tests (Warning: long and invasive tests)
  - custom: Generate a custom environment using a custom inventories'''
         )
+        string(
+            name: 'MAX_LATENCY',
+            defaultValue: '200',
+            description: 'Maximal latency to reach (us)'
+        )
         string (
             name: 'custom_inventories',
             description: '''Custom inventories list (comma separated).
