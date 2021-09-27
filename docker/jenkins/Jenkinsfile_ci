@@ -123,14 +123,12 @@ Work only if TYPE is custom.
                         """
                     }
                     stage("1.3. Fetch Sources") {
-                        sshagent(credentials : ['gitlab-credentials']) {
+                        
                             sh """
-                                repo init -u "ssh://git@$p.GITLAB_URL/$p.GITLAB_USER/repo-manifest.git" \
-                                -m "rte-sfl.xml" -b "$p.REPO_BRANCH"
+                                repo init -u "https://github.com/seapath/repo-manifest.git" \
                                 repo sync
                                 cqfd init
                             """
-                        }
                     }
                     stage("1.4. Ansible Prepare") {
                         sshagent(credentials : ['gitlab-credentials']) {
